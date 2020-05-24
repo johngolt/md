@@ -229,8 +229,6 @@ $i $向右遍历的过程中，如果遇到大于或等于主元的元素时，�
 
 链表法是一种更加常用的散列冲突解决办法，相比开放寻址法，它要简单很多。如下动图所示，在散列表中，每个位置对应一条链表，所有散列值相同的元素都放到相同位置对应的链表中。
 
-
-
 ##### 树
 
 ###### 二叉搜索树
@@ -288,4 +286,37 @@ The general recursive pattern for traversing a (non-empty) binary tree is this: 
 `Post-order` Check if the current node is empty or null. Traverse the left subtree by recursively calling the post-order function. Traverse the right subtree by recursively calling the post-order function. Display the data part of the root (or current node).
 
 Trees can also be traversed in *level-order*, where we visit every node on a level before going to a lower level. This search is referred to as *breadth-first search* , as the search tree is broadened as much as possible on each depth before going to the next depth.
+
+##### KMP算法
+
+ `KMP`算法的核心，它是主要利用匹配失败后的信息，尽量减少模式串与主串的匹配次数以达到快速匹配的目的。用成功匹配的位数减去匹配表中的匹配值就是下一次要移动的次数。
+
+![](./picture/2/198.png)
+
+![](./picture/2/199.png)
+
+对于前缀就是除了最后个字符以外所有的顺序组合方式。比如 A、AB、ABC、ABCA、ABCAB。后缀正好相反，除了第一个字符外，其他所有的组合方式。比如BCABD、CABD、ABD、ABD、BD、D。对于每个匹配值是如何计算的，那就对子串的每个字符组合寻找出前缀和后缀，然后进行比较是否有相同的，相同的字符组合有几位，就是所谓的匹配值。
+
+![](./picture/2/200.png)
+
+###### Bloom Filter
+
+在哈希表中存放的是元素本身，而 Bloom Filter 在内存中是一个足够大的位数组(Bit Array)，其最小的内存使用单位是Bit。元素在插入Bloom Filter时，使用哈希函数(Hash Function)计算其哈希值确定其在位数组中的位置索引，然后将位数组中的指定Bit从0置1即可(如该Bit已经被置1，则无需再次置1)。当使用Bloom Filter判定指定元素是否存在其中时，同样利用该Hash Function先计算哈希值，确定其在位数组的中位置索引，然后取出该位置的值， 若该Bit为0，则说明该元素不存在于其中；若该Bit为1，则说明该元素存在于其中。现已向一个Bloom Filter分别插入元素"Hello"、"World"为例，给出其插入过程的图解
+
+![](./picture/2/265.png)
+
+故判定一个元素是否存在于Bloom Filter，如果判定结果是不存在(False)，则一定不存在；但是如果判定结果是存在(True)，则实际情况其实是可能存在，而不是一定存在，即假阳性。 所以，实际应用中，在Bloom Filter 一般会使用多个Hash Function，以减小发生哈希冲突的概率。即，减小误判率 P(true)。插入一个元素时，分别计算其在各个Hash Function的哈希值，然后将各个哈希值对应的Bit的值置1；而判定元素是否存在于Bloom Filter时，则要求各个哈希值对应的Bit的值均为1才行
+
+![](./picture/2/266.png)
+
+Bloom Filter 中涉及到的一些参数指标：
+
+- 欲插入Bloom Filter中的元素数目: n
+- Bloom Filter误判率: P(true)
+- BitArray数组的大小: m
+- Hash Function的数目: k
+
+欲插入Bloom Filter中的元素数目 n 是我们在实际应用中可以提前获取或预估的；Bloom Filter的误判率 P(true) 则是我们提前设定的可以接受的容错率。所以在设计Bloom Filter过程中，最关键的参数就是BitArray数组的大小 m 和 Hash Function的数目 k。$P(true) = (p_1^n)^k=[1-(1-\frac{1}{m})^{kn}]^k$。从上式可以看出，当BitArray数组的大小m增大 或 欲插入Bloom Filter中的元素数目n 减小时，均可以使得误判率P(true)下降
+
+##### B+树
 
