@@ -435,7 +435,7 @@ pandas objects can be split on any of their axes. The abstract definition of gro
 pandas Index objects support duplicate values. If a non-unique index is used as the group key in a groupby operation, all values for the same index value will be considered to be in one group and thus the output of aggregation functions will only contain unique index values.
 Note that no splitting occurs until it’s needed. Creating the `GroupBy` object only verifies that you’ve passed a valid mapping.
 
-By default the group keys are sorted during the groupby operation. You may however pass `sort=False` for potential speedups. The `groups` attribute is a dict whose keys are the computed unique groups and corresponding values being the axis labels belonging to each group. 
+By default the group keys are sorted during the groupby operation. You may however pass `sort=False` for potential speedups. The `groups` attribute is a `dict` whose keys are the computed unique groups and corresponding values being the axis labels belonging to each group. 
 
 With hierarchically-indexed data, it’s quite natural to group by one of the levels of the hierarchy. If the `MultiIndex` has names specified, these can be passed instead of the `level` number. Grouping with multiple levels is supported. A `DataFrame` may be grouped by a combination of columns and index levels by specifying the column names as strings and the index `levels` as `pd.Grouper` objects. 
 
@@ -445,8 +445,6 @@ df.groupby(['A', 'B']).get_group(('bar', 'one'))
 ```
 
 Once you have created the `GroupBy` object from a `DataFrame`, you might want to do something different for each of the columns. Thus, using [] similar to getting a column from a `DataFrame`, you can do. With the `GroupBy` object in hand, iterating through the grouped data is very natural and functions similarly to `itertools.groupby()`. A single group can be selected using `get_group()`
-
-
 
 Notice that what is returned is not a set of ``DataFrame``s, but a ``DataFrameGroupBy`` object.
 This object is where the magic is: you can think of it as a special view of the ``DataFrame``, which is poised to dig into the groups but does no actual computation until the aggregation is applied.
