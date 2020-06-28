@@ -67,6 +67,9 @@ ax = fig.add_subplot(111)
 # '0.5' 0-1的小数 代表浮点数的字符串
 # '#FF00FF' 十六进制的颜色字符串
 # (0.1, 0.2, 0.3) #rgb三元组
+from matplotlib.colors import ListedColormap
+cmap = ListedColormap(['#0343df', '#e50000', '#ffff14', '#929591'])
+ax = df.plot.bar(x='year', colormap=cmap)
 ```
 
 ###### 设置线段的风格
