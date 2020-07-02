@@ -48,7 +48,7 @@ The `concat()` function does all of the heavy lifting of performing concatenatio
  result = pd.concat(frames, keys=['x', 'y', 'z'])
 ```
 
-![](D:/MarkDown/数据分析/picture/1/152.png)
+![](../../../picture/1/152.png)
 
 When gluing together multiple `DataFrames`, you have a choice of how to handle the other axes. This can be done in the following two ways: Take the union of them all, `join='outer'`. Take the intersection, `join='inner'`.
 
@@ -56,7 +56,7 @@ When gluing together multiple `DataFrames`, you have a choice of how to handle t
 result = pd.concat([df1, df4], axis=1).reindex(df1.index)
 ```
 
-![](D:/MarkDown/数据分析/picture/1/153.png)
+![](../../../picture/1/153.png)
 
 A useful shortcut to `concat()` are the `append()` instance methods on Series and `DataFrame`.  They concatenate along `axis=0`. Ignoring index on the concatenation axis, use the `ignore_index` argument. You can concatenate a mix of `Series` and `DataFrame` objects. The `Series` will be transformed to `DataFrame` with the column name as the name of the `Series`. If unnamed `Series` are passed they will be numbered consecutively. A fairly common use of the `keys` argument is to override the column names when creating a new `DataFrame` based on existing `Series`. Notice how the default behavior consists on letting the resulting `DataFrame` inherit the parent `Series`’ name, when these existed. 
 
@@ -120,3 +120,22 @@ You can join a singly-indexed DataFrame with a level of a MultiIndexed DataFrame
 
  The merge `suffixes` argument takes a tuple of list of strings to append to overlapping column names in the input DataFrames to disambiguate the result columns.
 
+**1. append与assign**
+
+​         1.1. append方法
+
+​         1.2. assign方法
+
+- - **2. combine与update**
+
+  -    2.1. combine方法
+
+  -   2.2. update方法
+
+​       **3. concat方法** 
+
+​        **4. merge与join**
+
+- -   4.1. merge函数
+
+  -   4.2. join函数
