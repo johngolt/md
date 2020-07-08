@@ -231,3 +231,80 @@ df1['target'].value_counts()
   - 柱形图可视化类别
   - 每个类别频数可视化
 
+##### Pipelines and composite estimators
+
+###### Pipeline: chaining estimators
+
+All estimators in a pipeline, except the last one, must be transformers, 等价于must have a transform method. The last estimator may be any type. The Pipeline is built using a list of `(key, value)` pairs, where the `key` is a string containing the name you want to give this step and `value` is an estimator object
+
+```python
+estimators = [('reduce_dim', PCA()), ('clf', SVC())]
+pipe = Pipeline(estimators)
+# The utility function make_pipeline is a shorthand for constructing pipelines
+make_pipeline(Binarizer(), MultinomialNB())
+pipe.steps[0]; pipe[0]; pipe['reduce_dim']
+pipe.named_steps.reduce_dim is pipe['reduce_dim']
+
+pipe.set_params(clf__C=10) 
+param_grid = dict(reduce_dim__n_components=[2, 5, 10],
+                  clf__C=[0.1, 10, 100])
+grid_search = GridSearchCV(pipe, param_grid=param_grid)
+```
+
+ The estimators of a pipeline are stored as a list in the `steps` attribute, but can be accessed by index or name by indexing the Pipeline. Pipeline’s `named_steps` attribute allows accessing steps by name with tab completion in interactive environments. A sub-pipeline can also be extracted using the slicing notation commonly used for Python Sequences, although only a step of 1 is permitted. This is convenient for performing only some of the transformations. Parameters of the estimators in the pipeline can be accessed using the `<estimator>__<parameter>` syntax. Calling `fit` on the pipeline is the same as calling fit on each estimator in turn, transform the input and pass it on to the next step. The pipeline has all the methods that the last estimator in the pipeline has. if the last estimator is a classifier, the Pipeline can be used as a classifier. If the last estimator is a transformer, again, so is the pipeline.
+
+##### `FeatureUnion`: composite feature spaces
+
+`FeatureUnion` combines several transformer objects into a new transformer that combines their output. A `FeatureUnion` takes a list of transformer objects. During fitting, each of these is fit to the data independently. The transformers are applied in parallel, and the feature matrices they output are concatenated side-by-side into a larger matrix.
+
+```python
+estimators = [('linear_pca', PCA()), ('kernel_pca', KernelPCA())]
+combined = FeatureUnion(estimators)
+```
+
+`FeatureUnion` serves the same purposes as Pipeline - convenience and joint parameter estimation and validation. `FeatureUnion` and Pipeline can be combined to create complex models.
+A `FeatureUnion` has no way of checking whether two transformers might produce identical features. It only produces a union when the feature sets are disjoint, and making sure they are the caller’s responsibility. A `FeatureUnion` is built using a list of `(key, value)` pairs, where the key is the name you want to give to a given transformation and `value` is an estimator object.
+
+##### Column Transformer for heterogeneous data
+
+The `ColumnTransformer` helps performing different transformations for different columns of the data, within a Pipeline that is safe from data leakage and that can be parametrized. `ColumnTransformer` works on arrays, sparse matrices, and pandas `DataFrames`. To each column, a different transformation can be applied, such as preprocessing or a specific feature extraction method.
+
+```python
+X = pd.DataFrame({'city': ['London', 'London', 'Paris', 'Sallisaw'],
+     'title': ["His Last Bow", "How Watson Learned the Trick",
+               "A Moveable Feast", "The Grapes of Wrath"],'expert_rating': [5, 3, 4, 5],
+     'user_rating': [4, 5, 4, 3]})
+'''In the above example, the CountVectorizer expects a 1D array as input and therefore the columns were specified as a string ('title'). However, preprocessing.OneHotEncoder as most of other transformers expects 2D data, therefore in that case you need to specify the column as a list of strings (['city']).'''
+column_trans = ColumnTransformer([('city_category', OneHotEncoder(dtype='int'),['city']),
+     ('title_bow', CountVectorizer(), 'title')],remainder='drop')
+
+column_trans.fit(X) 
+column_trans.get_feature_names()
+column_trans.transform(X).toarray()
+```
+
+Apart from a scalar or a single item list, the column selection can be specified as a list of multiple items, an integer array, a slice, or a boolean mask. Strings can reference columns if the input is a `DataFrame`, integers are always interpreted as the positional columns.
+
+We can keep the remaining rating columns by setting `remainder='passthrough'`. The values are appended to the end of the transformation:
+
+```
+column_trans = ColumnTransformer([('city_category', OneHotEncoder(dtype='int'),['city']),
+     ('title_bow', CountVectorizer(), 'title')], remainder='passthrough')
+```
+
+ The `remainder` parameter can be set to an estimator to transform the remaining rating columns. The transformed values are appended to the end of the transformation.
+
+```python
+column_trans = ColumnTransformer([('city_category', OneHotEncoder(), ['city']),
+     ('title_bow', CountVectorizer(), 'title')], remainder=MinMaxScaler())
+```
+
+##### Feature extraction
+
+The `sklearn.feature_extraction` module can be used to extract features in a format supported by machine learning algorithms from datasets consisting of formats such as text and image.
+Feature extraction is very different from Feature selection: the former consists in transforming arbitrary data, such as text or images, into numerical features usable for machine learning. The latter is a machine learning technique applied on these features.
+
+###### loading features from `dicts`
+
+`DictVectorizer` implements what is called one-of-K or “one-hot” coding for categorical features. Categorical features are “attribute-value” pairs where the value is restricted to a list of discrete of possibilities without ordering
+
