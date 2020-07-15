@@ -2,12 +2,23 @@
 
 pandas captures 4 general time related concepts: Date times: A specific date and time with timezone support; Time deltas: An absolute time duration; Time spans: A span of time defined by a point in time and its associated frequency; Date offsets: A relative time duration that respects calendar arithmetic.
 
-| Concept      | Scalar Class | Array Class      | Data Type         | Creation Method                 |
-| ------------ | ------------ | ---------------- | ----------------- | ------------------------------- |
-| Date times   | `Timestamp`  | `DatetimeIndex`  | `datime64[ns]`    | `to_datetime,date_range`        |
-| Time deltas  | `Timedelta`  | `TimedeltaIndex` | `timedelta64[ns]` | `to_timedelta, timedelta_range` |
-| Time spans   | `Period`     | `PeriodIndex`    | `period[freq]`    | `Period, period_range`          |
-| Date offsets | `DateOffset` | `None`           | `None`            | `DateOffset`                    |
+| 名称                     | 描述                   | 元素类型     | 创建方式                        |
+| ------------------------ | ---------------------- | ------------ | ------------------------------- |
+| Date Times(时间点/时刻)  | 描述特定日期或时间点   | `Timestamp`  | `to_datetime, date_range`       |
+| Time Spans(时间段/时期)  | 由时间点定义的一段时期 | `Period`     | `Period, period_range`          |
+| Date offsets(相对时间差) | 一段时间的相对大小     | `DateOffset` | `DateOffset`                    |
+| Time deltas(绝对时间差)  | 一段时间的绝对大小     | `Timedelta`  | `to_timedelta,time_delta_range` |
+
+事实上，Timestamp的精度远远不止day，可以最小到纳秒ns
+
+```
+pd.Timestamp.min#可用最小时间
+pd.Timestamp.max
+```
+
+Timedelta绝对时间差的特点指无论是冬令时还是夏令时，增减1day都只计算24小时
+
+DataOffset相对时间差指，无论一天是23\24\25小时，增减1day都与当天相同的时间保持一致
 
 The power of ``datetime`` and ``dateutil`` lie in their flexibility and easy syntax: you can use these objects and their built-in methods to easily perform nearly any operation you might be interested in.
 Where they break down is when you wish to work with large arrays of dates and times:
