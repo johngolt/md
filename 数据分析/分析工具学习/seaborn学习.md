@@ -1,119 +1,130 @@
-#### Visualizing statistical relationships
+There are five preset `seaborn` themes: `darkgrid, whitegrid, dark, white, and ticks`. The default theme is `darkgrid`. Both the `white` and `ticks` styles can benefit from removing the top and right axes spines
 
-Statistical analysis is a process of understanding how variables in a dataset relate to each other and how those relationships depend on other variables.
-
-We will discuss three `seaborn` functions in this tutorial. The one we will use most is `relplot()`. This is a figure-level function for visualizing statistical relationships using two common approaches: scatter plots and line plots. `relplot()` combines a `FacetGrid` with one of two axes-level functions: `scatterplot() `, `lineplot()`. As we will see, these functions can be quite illuminating because they use simple and easily-understood representations of data that can nevertheless represent complex dataset structures. They can do so because they plot two-dimensional graphics that can be enhanced by mapping up to three additional variables using the semantics of` hue, size, and style`.
-
-##### Relating variable with scatter plots
-
-The scatter plot is a mainstay of statistical visualization. It depicts the joint distribution of two variables using a cloud of points, where each point represents an observation in the dataset. This depiction allows the eye to infer a substantial amount of information about whether there is any meaningful relationship between them. the hue semantic was categorical, the default qualitative palette was applied. If the hue semantic is numeric specifically, if it can be cast to float, the default coloring switches to a sequential palette
-
-##### Emphasizing continuity with line plots
-
-With some datasets, you may want to understand changes in one variable as a function of time, or a similarly continuous variable. In this situation, a good choice is to draw a line plot. In `seaborn`, this can be accomplished by the `lineplot()` function, either directly or with `relplot()` by setting `kind="line"`. More complex datasets will have multiple measurements for the same value of the `x` variable. The default behavior in `seaborn` is to aggregate the multiple measurements at each `x` value by plotting the mean and the 95% confidence interval around the mean.  `relplot()` is based on the `FacetGrid`, this is easy to do. To show the influence of an additional variable, instead of assigning it to one of the semantic roles in the plot, use it to “facet” the visualization. This means that you make multiple axes and plot subsets of the data on each of them. You can also show the influence two variables this way: one by faceting on the columns and one by faceting on the rows. Remember that the size `FacetGrid` is parameterized by the height and aspect ratio of each facet. 
-
-```python
-import seaborn as sns
-sns.relplot(x="total_bill", y="tip", hue="smoker",col="time", data=tips);
-
-sns.relplot(x="timepoint", y="signal", hue="subject",col="region", row="event", height=3,
-            kind="line", estimator=None, data=fmri);
-
-sns.relplot(x="timepoint", y="signal", hue="event", style="event",col="subject",                          col_wrap=5,height=3, aspect=.75, linewidth=2.5,
-            kind="line", data=fmri.query("region == 'frontal'"));
+```pyhon
+sns.set_style("whitegrid")
 ```
 
-#### Plotting with categorical data
-
-In the relational plot tutorial we saw how to use different visual representations to show the relationship between multiple variables in a dataset. In the examples, we focused on cases where the main relationship was between two numerical variables. If one of the main variables is “categorical” (divided into discrete groups) it may be helpful to use a more specialized approach to visualization.
-
-In `seaborn`, there are several different ways to visualize a relationship involving categorical data. There are a number of axes-level functions for plotting categorical data in different ways and a figure-level interface, `catplot()`, that gives unified higher-level access to them. It is helpful to think of the different categorical plot kinds as belonging to three different families.
-
-Categorical `scatterplots`: `stripplot()`、`swarmplot() with kind="swarm"`
-Categorical distribution plots: `boxplot() with kind="box"`、 `violinplot() with kind="violin"`、 `boxenplot() with kind="boxen"`
-Categorical estimate plots:`pointplot() with kind="point"`、`barplot() with kind="bar"`、`countplot() with kind="count"`
-These families represent the data using different levels of granularity. When knowing which to use, you will have to think about the question that you want to answer. 
-
-##### Categorical `scatterplots`
-
-The default representation of the data in `catplot()` uses a `scatterplot`. There are actually two different categorical scatter plots in `seaborn`. They take different approaches to resolving the main challenge in representing categorical data with a scatter plot, which is that all of the points belonging to one category would fall on the same position along the axis corresponding to the categorical variable. The approach used by `stripplot()`, which is the default “kind” in `catplot()` is to adjust the positions of points on the categorical axis with a small amount of random “jitter”. The second approach adjusts the points along the categorical axis using an algorithm that prevents them from overlapping. It can give a better representation of the distribution of observations, although it only works well for relatively small datasets. This kind of plot is sometimes called a `“beeswarm”` and is drawn in `seaborn` by `swarmplot()`, which is activated by setting kind="swarm" in `catplot()`.
-
-Unlike with numerical data, it is not always obvious how to order the levels of the categorical variable along its axis. In general, the `seaborn` categorical plotting functions try to infer the order of categories from the data. If your data have a pandas Categorical `datatype`, then the default order of the categories can be set there. If the variable passed to the categorical axis looks numerical, the levels will be sorted. But the data are still treated as categorical and drawn at ordinal positions on the categorical axes even when numbers are used to label them
+控制绘图元素的尺度，使得相同的代码对于不同的场景展示的图像大小适当。The four preset contexts, are `paper, notebook, talk`, and `poster`. The notebook style is the default.
 
 ```python
-sns.catplot(x="size", y="total_bill", kind="swarm",
-            data=tips.query("size != 3"));
+sns.set_context("paper")
 ```
 
-The other option for choosing a default ordering is to take the levels of the category as they appear in the dataset. The ordering can also be controlled on a plot-specific basis using the order parameter. This can be important when drawing multiple categorical plots in the same figure.
+#### 数值特征的分布x
+
+##### 数值$\times$ 数值 散点图
 
 ```python
-sns.catplot(x="smoker", y="tip", order=["No", "Yes"], data=tips);
+tips = sns.load_dataset("tips")
+#hue, style可以分类展示不同类别情况，size, col, row
+# kind='line' to draw a line plot. scatter
+sns.relplot(x="total_bill", y="tip", data=tips);
 ```
 
-put the categorical variable on the vertical axis particularly when the category names are relatively long or there are many categories. To do this, swap the assignment of variables to axes
+##### 数值$\times$ 数值 分布图
+
+The `jointplot()` function uses a `JointGrid` to manage the figure.  `jointplot()` returns the `JointGrid` object after plotting
 
 ```python
-sns.catplot(x="total_bill", y="day", hue="time", kind="swarm", data=tips);
+mean, cov = [0, 1], [(1, .5), (.5, 1)]
+data = np.random.multivariate_normal(mean, cov, 200)
+df = pd.DataFrame(data, columns=["x", "y"])
+# kind='hex', 'kde'
+sns.jointplot(x="x", y="y", data=df);
 ```
 
-##### Distributions of observations within categories
+##### 单数值特征可视化
 
-As the size of the dataset grows, categorical scatter plots become limited in the information they can provide about the distribution of values within each category. When this happens, there are several approaches for summarizing the distributional information in ways that facilitate easy comparisons across the category levels
-
-The first is the familiar `boxplot()`. This kind of plot shows the three quartile values of the distribution along with extreme values. The “whiskers” extend to points that lie within `1.5 IQRs` of the lower and upper quartile, and then observations that fall outside this range are displayed independently. This means that each value in the `boxplot` corresponds to an actual observation in the data.
-A related function, `boxenplot()`, draws a plot that is similar to a box plot but optimized for showing more information about the shape of the distribution. It is best suited for larger datasets:
-A different approach is a `violinplot()`, which combines a `boxplot` with the kernel density estimation procedure. This approach uses the kernel density estimate to provide a richer description of the distribution of values. Additionally, the quartile and `whikser` values from the `boxplot` are shown inside the violin. The downside is that, because the `violinplot` uses a KDE, there are some other parameters that may need tweaking, adding some complexity relative to the straightforward `boxplot`. It can also be useful to combine `swarmplot()` or `striplot()` with a box plot or violin plot to show each observation along with a summary of the distribution:
+The most convenient way to take a quick look at a univariate distribution in `seaborn` is the `distplot` function, this will draw a histogram and fit a kernel density estimate. 
 
 ```python
-g = sns.catplot(x="day", y="total_bill", kind="violin", inner=None, data=tips)
-sns.swarmplot(x="day", y="total_bill", color="k", size=3, data=tips, ax=g.ax);
+x = np.random.normal(size=100)
+#bins分箱的数目。
+#fit kde与fit设置的分布进行对比
+sns.distplot(x);
 ```
 
-##### Statistical estimation within categories
+##### 多数值特征分布
 
-For other applications, rather than showing the distribution within each category, you might want to show an estimate of the central tendency of the values. A familiar style of plot that accomplishes this goal is a bar plot. In `seaborn`, the `barplot()` function operates on a full dataset and applies a function to obtain the estimate (taking the mean by default). When there are multiple observations in each category, it also uses bootstrapping to compute a confidence interval around the estimate and plots that using error bars.
-A special case for the bar plot is when you want to show the number of observations in each category rather than computing a statistic for a second variable. This is similar to a histogram over a categorical, rather than quantitative, variable. In `seaborn`, it is easy to do so with the `countplot()` function. An alternative style for visualizing the same information is offered by the `pointplot()` function. This function also encodes the value of the estimate with height on the other axis, but rather than showing a full bar, it plots the point estimate and confidence interval. Additionally, `pointplot()` connects points from the same hue category. This makes it easy to see how the main relationship is changing as a function of the hue semantic, because your eyes are quite good at picking up on differences of slopes:
-
-#### Visualizing the distribution of a dataset
-
-##### Plotting univariate distributions
-
-The most convenient way to take a quick look at a univariate distribution in `seaborn` is the `distplot()` function. By default, this will draw a histogram and fit a kernel density estimate. Histograms are likely familiar, and a hist function already exists in `matplotlib`. A histogram represents the distribution of data by forming bins along the range of the data and then drawing bars to show the number of observations that fall in each bin. To illustrate this, let’s remove the density curve and add a rug plot, which draws a small vertical tick at each observation. You can make the rug plot itself with the `rugplot()` function, but it is also available in `distplot()`:
+To plot multiple pairwise bivariate distributions in a dataset, you can use the `pairplot()` function. This creates a matrix of axes and shows the relationship for each pair of columns in a `DataFrame`. the `pairplot()` function is built on top of a `PairGrid` object
 
 ```python
-sns.distplot(x, kde=False, rug=True);
+iris = sns.load_dataset("iris")
+sns.pairplot(iris);
+
+g = sns.PairGrid(iris)
+g.map_diag(plt.hist)
+g.map_offdiag(plt.scatter);
+
+g.map_upper(plt.scatter)
+g.map_lower(sns.kdeplot)
 ```
 
-Drawing a KDE is more computationally involved than drawing a histogram. 
+##### 相关系数可视化
 
-##### Plotting bivariate distributions
+```python
+uniform_data = np.random.rand(10, 12)
+ax = sns.heatmap(uniform_data)
+'''fmt : string, optional,String formatting code to use when adding annotations.'''
+```
 
-It can also be useful to visualize a bivariate distribution of two variables. The easiest way to do this in `seaborn` is to just use the `jointplot()` function, which creates a multi-panel figure that shows both the bivariate (or joint) relationship between two variables along with the univariate (or marginal) distribution of each on separate axes. The most familiar way to visualize a bivariate distribution is a `scatterplot`, where each observation is shown with point at the x and y values. This is analogous to a rug plot on two dimensions. You can draw a `scatterplot` with the `matplotlib plt.scatter` function, and it is also the default kind of plot shown by the `jointplot()` function. The bivariate analogue of a histogram is known as a `“hexbin”` plot, because it shows the counts of observations that fall within hexagonal bins. This plot works best with relatively large datasets. It’s available through the `matplotlib plt.hexbin` function and as a style in `jointplot()`. It looks best with a white background:
+#### 类别特征分布
 
-The `jointplot()` function uses a `JointGrid` to manage the figure. For more flexibility, you may want to draw your figure by using `JointGrid` directly. `jointplot()` returns the `JointGrid` object after plotting, which you can use to add more layers or to tweak other aspects of the visualization:
+##### 类别$\times$ 数值 散点图
 
-##### Visualizing pairwise relationships in a dataset
+```python
+tips = sns.load_dataset("tips")
+# kind = strip, swarm运行速度很慢
+sns.catplot(x="day", y="total_bill", data=tips);
+```
 
-To plot multiple pairwise bivariate distributions in a dataset, you can use the `pairplot()` function. This creates a matrix of axes and shows the relationship for each pair of columns in a `DataFrame`. by default, it also draws the univariate distribution of each variable on the diagonal Axes. Much like the relationship between `jointplot()` and `JointGrid`, the `pairplot()` function is built on top of a `PairGrid` object, which can be used directly for more flexibility.
+##### 类别$\times$ 数值 分布图
 
-#### Building structured multi-plot grids
+```python
+#kind = box, violin, boxen
+sns.catplot(x="day", y="total_bill", kind="box", data=tips);
+sns.catplot(data=iris, orient="h", kind="box");
+```
 
-##### Conditional small multiples
+##### 类别$\times$ 数值统计值可视化
 
-The `FacetGrid` class is useful when you want to visualize the distribution of a variable or the relationship between multiple variables separately within subsets of your dataset. A `FacetGrid` can be drawn with up to three dimensions: `row, col, and hue`. The first two have obvious correspondence with the resulting array of axes; think of the hue variable as a third dimension along a depth axis, where different levels are plotted with different colors.
+```python
+titanic = sns.load_dataset("titanic")
+# kind='bar', point
+# estimator数值特征的估计函数
+sns.catplot(x="sex", y="survived",kind="bar", data=titanic);
+```
 
-The class is used by initializing a `FacetGrid` object with a `dataframe` and the names of the variables that will form the row, column, or hue dimensions of the grid. These variables should be categorical or discrete, and then the data at each level of the variable will be used for a facet along that axis. 
+##### 单类别特征可视化
+
+```python
+sns.catplot(x="deck", kind="count", data=titanic);
+```
+
+#### multi-plot grids
+
+`FacetGrid` can be drawn with up to three dimensions: `row, col, and hue`. The first two have obvious correspondence with the resulting array of axes; think of the hue variable as a third dimension along a depth axis, where different levels are plotted with different colors.
 
 The main approach for visualizing data on this grid is with the `FacetGrid.map()` method. Provide it with a plotting function and the name(s) of variable(s) in the `dataframe` to plot. 
 
-The size of the figure is set by providing the height of each facet, along with the aspect ratio:
+```python
+g = sns.FacetGrid(tips, col="time")
+g.map(plt.hist, "tip");
 
-Once you’ve drawn a plot using `FacetGrid.map()`, you may want to adjust some aspects of the plot. There are also a number of methods on the `FacetGrid` object for manipulating the figure at a higher level of abstraction. The most general is `FacetGrid.set()`, and there are other more specialized methods like `FacetGrid.set_axis_labels()`, which respects the fact that interior facets do not have axis labels. 
+g = sns.FacetGrid(tips, col="sex", hue="smoker")
+g.map(plt.scatter, "total_bill", "tip", alpha=.7)
+g.add_legend();
+```
 
-For even more customization, you can work directly with the underling `matplotlib` Figure and Axes objects, which are stored as member attributes at `fig` and `axes` (a two-dimensional array), respectively. When making a figure without row or column faceting, you can also use the ax attribute to directly access the single axes.
+The most general is `FacetGrid.set()`, and there are other more specialized methods like `FacetGrid.set_axis_labels()`, which respects the fact that interior facets do not have axis labels. 
 
-You’re not limited to existing `matplotlib` and `seaborn` functions when using `FacetGrid`. However, to work properly, any function you use must follow a few rules:
+```python
+g.set_axis_labels("Total bill (US Dollars)", "Tip");
+g.set(xticks=[10, 30, 50], yticks=[2, 6, 10]);
+g.fig.subplots_adjust(wspace=.02, hspace=.02);
+```
+
+##### Conditional small multiples
 
 It must plot onto the “currently active” `matplotlib` Axes. This will be true of functions in the `matplotlib.pyplot`  name space, and you can call `plt.gca` to get a reference to the current Axes if you want to work directly with its methods.
 It must accept the data that it plots in positional arguments. Internally, `FacetGrid` will pass a Series of data for each of the named positional arguments passed to `FacetGrid.map()`.
@@ -129,68 +140,182 @@ g = sns.FacetGrid(tips, col="sex", height=4)
 g.map(quantile_plot, "total_bill");
 ```
 
-##### plotting pairwise data relationships
+#### `Matplotlib`
 
-`PairGrid` also allows you to quickly draw a grid of small subplots using the same plot type to visualize data in each. In a `PairGrid`, each row and column is assigned to a different variable, so the resulting plot shows each pairwise relationship in the dataset. This style of plot is sometimes called a `“scatterplot matrix”`, as this is the most common way to show each relationship, but `PairGrid` is not limited to `scatterplots`. It is important to understand the differences between a `FacetGrid` and a `PairGrid`. In the former, each facet shows the same relationship conditioned on different levels of other variables. In the latter, each plot shows a different relationship (although the upper and lower triangles will have mirrored plots). Using `PairGrid` can give you a very quick, very high-level summary of interesting relationships in your dataset. The basic usage of the class is very similar to `FacetGrid`. 
+![](../../picture/1/286.png)
 
-#### Matrix plots
+###### 选择绘图风格
 
-```python
-import numpy as np; np.random.seed(0)
-import seaborn as sns; sns.set()
-uniform_data = np.random.rand(10, 12)
-ax = sns.heatmap(uniform_data)
-'''fmt : string, optional,String formatting code to use when adding annotations.'''
-```
-
-#### Controlling figure aesthetics
-
-`Seaborn` splits `matplotlib` parameters into two independent groups. The first group sets the aesthetic style of the plot, and the second scales various elements of the figure so that it can be easily incorporated into different contexts. The interface for manipulating these parameters are two pairs of functions. To control the style, use the `axes_style()` and `set_style()` functions. To scale the plot, use the `plotting_context()` and `set_context()` functions. In both cases, the first function returns a dictionary of parameters and the second sets the `matplotlib` defaults.
-
-##### `Seaborn` figure styles
-
-There are five preset `seaborn` themes: `darkgrid, whitegrid, dark, white, and ticks`. The default theme is `darkgrid`. Both the `white` and `ticks` styles can benefit from removing the top and right axes spines, which are not needed. The `seaborn` function `despine()` can be called to remove them. Some plots benefit from offsetting the spines away from the data, which can also be done when calling `despine()`. When the ticks do not cover the whole range of the axis, the `trim` parameter will limit the range of the surviving spines.
-Although it’s easy to switch back and forth, you can also use the `axes_style()` function in a with statement to temporarily set plot parameters. This also allows you to make figures with differently-styled axes. If you want to customize the `seaborn` styles, you can pass a dictionary of parameters to the `rc` argument of `axes_style()` and `set_style()`. Note that you can only override the parameters that are part of the style definition through this method. (However, the higher-level `set()` function takes a dictionary of any `matplotlib parameters`). If you want to see what parameters are included, you can just call the function with no arguments, which will return the current settings
-
-##### Scaling plot elements
-
-A separate set of parameters control the scale of plot elements, which should let you use the same code to make plots that are suited for use in settings where larger or smaller plots are appropriate. The four preset contexts, in order of relative size, are `paper, notebook, talk`, and `poster`. The notebook style is the default, and was used in the plots above. Most of what you now know about the style functions should transfer to the context functions. You can call `set_context()` with one of these names to set the parameters, and you can override the parameters by providing a dictionary of parameter values. You can also independently scale the size of the font elements when changing the context. (This option is also available through the top-level `set()` function).
-Similarly, you can temporarily control the scale of figures nested under a with statement. Both the style and the context can be quickly configured with the `set()` function.
-
-#### Choosing color palettes
-
-The most important function for working with discrete color palettes is `color_palette()`. This function provides an interface to many (though not all) of the possible ways you can generate colors in `seaborn`, and it’s used internally by any function that has a palette argument. `color_palette()` will accept the name of any `seaborn` palette or `matplotlib colormap` (except jet, which you should never use). It can also take a list of colors specified in any valid `matplotlib` format (`RGB` tuples, hex color codes, or HTML color names). The return value is always a list of `RGB` tuples. Finally, calling `color_palette()` with no arguments will return the current default color cycle. A corresponding function, `set_palette()`, takes the same arguments and will set the default color cycle for all plots. You can also use `color_palette()` in a with statement to temporarily change the default palette. It is generally not possible to know what kind of color palette or color-map is best for a set of data without knowing about the characteristics of the data. Following that, we’ll break up the different ways to use `color_palette()` and other `seaborn` palette functions by the three general kinds of color palettes: qualitative, sequential, and diverging.
-
-##### Qualitative color palettes
-
-Qualitative palettes are best when you want to distinguish discrete chunks of data that do not have an inherent ordering. When importing `seaborn`, the default color cycle is changed to a set of six colors that evoke the standard `matplotlib` color cycle while aiming to be a bit more pleasing to look at. There are six variations of the default theme, called `deep, muted, pastel, bright, dark`, and `colorblind`. When you have an arbitrary number of categories to distinguish without emphasizing any one, the easiest approach is to draw evenly-spaced colors in a circular color space. This is what most `seaborn` functions default to when they need to use more colors than are currently set in the default color cycle.
-
-The most common way to do this uses the `hls` color space, which is a simple transformation of `RGB` values. There is also the `hls_palette()` function that lets you control the lightness and saturation of the colors. `seaborn` provides an interface to the `husl` system, which also makes it easy to select evenly spaced hues while keeping the apparent brightness and saturation much more uniform. here is similarly a function called `husl_palette()` that provides a more flexible interface to this system.
-
-##### Sequential color palettes
-
-The second major class of color palettes is called “sequential”. This kind of color mapping is appropriate when data range from relatively low or uninteresting values to relatively high or interesting values. Although there are cases where you will want discrete colors in a sequential palette, it is more common to use them as a `colormap` in functions like `kdeplot()` and `heatmap()`.
-
-Like in `matplotlib`, if you want the lightness ramp to be reversed, you can add a `_r` suffix to the palette name. The `cubehelix` color palette system makes sequential palettes with a linear increase or decrease in brightness and some variation in hue. This means that the information in your `colormap` will be preserved when converted to black and white when viewed by a colorblind individual.
-
-For a simpler interface to custom sequential palettes, you can use `light_palette()` or `dark_palette()`, which are both seeded with a single color and produce a palette that ramps either from light or dark desaturated values to that color. 
+We will use the ``plt.style`` directive to choose appropriate aesthetic styles for our figures.
 
 ```python
-sns.palplot(sns.light_palette("green"))
-
-sns.palplot(sns.light_palette((210, 90, 60), input="husl"))
-sns.palplot(sns.dark_palette("muted purple", input="xkcd"))
+plt.style.use('ggplot')# 选择绘图风格
+plt.style.available  # 可用的绘图风格
+#use the style context manager, which sets a style temporarily:
+with plt.style.context('stylename'):
+    make_a_plot()
 ```
 
-By default, the input can be any valid `matplotlib` color. Alternate interpretations are controlled by the input argument. Currently you can provide tuples in `hls` or `husl` space along with the default `rgb`, and you can also seed the palette with any valid `xkcd` color.
-
-##### Diverging color palettes
-
-The third class of color palettes is called “diverging”. These are used for data where both large low and high values are interesting. There is also usually a well-defined midpoint in the data. The rules for choosing good diverging palettes are similar to good sequential palettes, except now you want to have two relatively subtle hue shifts from distinct starting hues that meet in an under-emphasized color at the midpoint
-
-You can also use the `seaborn` function `diverging_palette()` to create a custom `colormap` for diverging data. This function makes diverging palettes using the `husl` color system. You pass it two hues and, optionally, the lightness and saturation values for the extremes. Using `husl` means that the extreme values, and the resulting ramps to the midpoint, will be well-balanced.
+###### 设置中文字体
 
 ```python
-sns.palplot(sns.diverging_palette(220, 20, n=7))
-sns.palplot(sns.diverging_palette(145, 280, s=85, l=25, n=7))
+plt.rcParams['font.sans-serif'] = ['SimHei']# SimHei：微软雅黑, FangSong：仿宋
+plt.rcParams['axes.unicode_minus'] = False # 显示负坐标
 ```
+
+###### Figure
+
+```python
+fig = plt.figure(figsize=(8,6))
+```
+
+###### Axes
+
+```python
+Figure.add_subplot(*args,**kwargs) #返回的是Axes实例
+plt.subplot(nrows,ncols,plot_number) #plot_number起始于1，最大值为nrows*ncols。
+
+plt.subplots(nrows, ncols) #函数一次性的创建多个SubPlot
+
+plt.subplot2grid(shape=(2,2),loc=(0,0),colspan=1, rowspan=1) 
+#shape:提供网格形状, loc:提供SubPlot位置即可, colspan指定纵向的跨度
+
+gs=mpl.gridspec.GridSpec(2,2)
+#GridSpec对象提供了类似array的索引方法，其索引的结果是一个SubplotSpec对象实例。
+#如果你想创建横跨多个网格的SubplotSpec，那么你需要对`GridSpec`对象执行分片索引
+gs.update(left=0.05,right=0.48,wspace=0.05) 
+#left:subplot左侧宽度,wspace:subplot之间的空白宽度
+plt.subplot(gs[0,0])#创建SubPlot
+plt.subplot(gs[0,:-1])#创建横跨多个网格的SubplotSpec，对GridSpec对象执行分片索引
+```
+
+###### 颜色设置
+
+```python
+mpl.colors.cnames #常用颜色的字符串和对应的`#FFFFFF`形式
+
+# 'g', 'r' 代表颜色的字符串
+# '0.5' 0-1的小数 代表浮点数的字符串
+# '#FF00FF' 十六进制的颜色字符串
+# (0.1, 0.2, 0.3) #rgb三元组
+from matplotlib.colors import ListedColormap
+cmap = ListedColormap(['#0343df', '#e50000', '#ffff14', '#929591'])
+ax = df.plot.bar(x='year', colormap=cmap)
+
+colors.rgb2hex(rgb)#给出了`rgb`元组到`#FFFFFF`形式。
+hex2color(s)#给出了`#FFFFFF`到`rgb`形式
+
+```
+
+###### 设置线段的风格
+
+```python
+ax.plot(t, s, '-p', color='gray',markersize=15, linewidth=4,markerfacecolor='white', markeredgecolor='gray',markeredgewidth=2)
+```
+
+###### 设置标题
+
+```python
+#设置16px的字体大小，将标题显示在左侧
+ax.set_title('标题',fontdict={'size':16},loc = 'left')
+```
+
+###### 边框的显示
+
+![](../../picture/1/289.png)
+
+```python
+ax.spines['right'].set_visible(False)
+ax.spines['top'].set_visible(False)
+```
+
+###### 图例设置
+
+函数：`ax.legend()`。图例是对图形所展示的内容的解释，比如在一张图中画了三条线，那么这三条线都代表了什么呢？这时就需要做点注释。
+
+```python
+ax.plot(['北京','上海','深圳'],[1,3,5],label='2010')
+ax.plot(['北京','上海','深圳'],[2,4,6],label='2020')
+ax.legend()# 第一种
+ax.plot(['北京','上海','深圳'],[1,3,5])
+ax.plot(['北京','上海','深圳'],[2,4,6])
+ax.legend(['2010','2020'])#第二种
+```
+
+###### 图形与边框之间的留白比例
+
+函数：`ax.margins()`
+
+![](../../picture/1/287.png)
+
+```python
+# 可以设置四个方向都不留白，也可以单独设置留白的方向和宽度
+ax.margins(0)
+```
+
+###### 设置双坐标轴
+
+双坐标轴一般用于复合图表，同时表示两种图表的指标量纲不一，经典的使用场景如帕累托图。
+
+```python
+fig,ax = plt.subplots()
+ax.plot(['北京','上海','深圳'],[1,3,5],color='r')
+ax2 = ax.twinx()
+ax2.bar(['北京','上海','深圳'],[20,40,60],alpha=0.3)
+```
+
+###### 坐标轴相关设置
+
+![](../../picture/1/288.png)
+
+首先有横坐标`xaxis`和纵坐标`yaxis`，横纵坐标上的标签为`xlabel`和`ylabel`，横纵坐标上有刻度线`tick`，刻度上对应的刻度标签则是`tick label`。具体设置时所对应的函数为
+
+- `xlabel` -->`ax.set_xlabel()`
+- `ylabel` -->`ax.set_ylabel()`
+- tick和tick label -->`ax.tick_params`，`ax.xticks()`，`ax.yticks()`
+
+```
+ax.locator_params(axis='x', nbins=20)#调整坐标刻度
+xmajorLocator = MultipleLocator(2)   #定义横向主刻度标签的刻度差为2的倍数。就是隔几个刻度才显示一个标签文本
+ymajorLocator = MultipleLocator(3)   #定义纵向主刻度标签的刻度差为3的倍数。就是隔几个刻度才显示一个标签文本
+
+ax1.xaxis.set_major_locator(xmajorLocator) #x轴 应用定义的横向主刻度格式。如果不应用将采用默认刻度格式
+ax1.yaxis.set_major_locator(ymajorLocator) #y轴 应用定义的纵向主刻度格式。如果不应用将采用默认刻度格式
+```
+
+###### 网格线设置
+
+```python
+# b参数设置是否显示网格
+# axis参数设置在哪个轴上显示网格线，可选参数为'x','y','both'
+ax.grid(b=True,axis='y')
+ax.grid(b=True,axis='x', color='0.5', lw=1, ls='-.')
+```
+
+###### Text
+
+```python
+ax.text(3, 8, 'boxed italics $E=mc^2$', style='italic',fontsize=15,
+        bbox={'facecolor':'red', 'alpha':0.5, 'pad':10})
+
+ax.text(0.95, 0.01, 'colored text in axes coords',
+        verticalalignment='bottom', horizontalalignment='right',
+        transform=ax.transAxes,
+        color='green', fontsize=15)
+```
+
+###### Annotate
+
+```python
+ax.annotate('annotate', xy=(2, 1), xytext=(3, 4),
+            arrowprops=dict(facecolor='black', shrink=0.05))
+```
+
+###### 水平垂直线
+
+```python
+plt.axhline(y=1, xmin=0, xmax=1, linewidth=8, color='#d62728')
+plt.axvline(x=0, ymin=0.75, linewidth=8, color='#1f77b4')
+plt.axhspan(0.25, 0.75, facecolor='0.5', alpha=0.5)
+```
+
