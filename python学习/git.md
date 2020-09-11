@@ -1,9 +1,3 @@
-Git会将整个数据库储存在.git/目录下，Git提供了一个能够帮助你探索它的方法`git cat-file [-t] [-p]`，`-t`可以查看object的类型，`-p`可以查看object储存的具体内容。git中由三种object，第一种blob类型，它只储存的是一个文件的内容，不包括文件名等其他信息。然后将这些信息经过SHA1哈希算法得到对应的哈希值，作为这个object在Git仓库中的唯一身份证。第二种tree，它将当前的目录结构打了一个快照。从它储存的内容来看可以发现它储存了一个目录结构（类似于文件夹），以及每一个文件（或者子文件夹）的权限、类型、对应的身份证（SHA1值）、以及文件名。第三种commit，它储存的是一个提交的信息，包括对应目录结构的快照tree的哈希值，上一个提交的哈希值，提交的作者以及提交的具体时间，最后是该提交的信息。
-
-![](../picture/1/220.png)
-
-![](../picture/1/221.png)
-
 ##### 工作流程
 
 ![](../picture/1/141.png)
@@ -14,22 +8,44 @@ Git会将整个数据库储存在.git/目录下，Git提供了一个能够帮助
 - 远程仓库(简称：远程)：输入命令：`git push 远程仓库`，此次改动就放到了 ‘远程仓库’
 - commit-id：输出命令：`git log`，最上面那行 `commit xxxxxx`，后面的字符串就是 commit-id
 
-![](../picture/2/88.png)
+###### 将工作区加到暂存区
 
-当执行 `"git reset HEAD"` 命令时，暂存区的目录树会被重写，被 master 分支指向的目录树所替换，但是工作区不受影响。 
-当执行 `"git rm --cached <file>"` 命令时，会直接从暂存区删除文件，工作区则不做出改变。 
-当执行 `"git checkout "` 或者 `"git checkout -- <file>"` 命令时，会用暂存区全部或指定的文件替换工作区的文件。这个操作很危险，会清除工作区中未添加到暂存区的改动。 
-当执行 `"git checkout HEAD "` 或者 `"git checkout HEAD <file>"` 命令时，会用 HEAD 指向的 master 分支中的全部或者部分文件替换暂存区和以及工作区中的文件。这个命令也是极具危险性的，因为不但会清除工作区中未提交的改动，也会清除暂存区中未提交的改动。
+Git会将整个数据库储存在.git/目录下，Git提供了一个能够帮助你探索它的方法`git cat-file [-t] [-p]`，`-t`可以查看object的类型，`-p`可以查看object储存的具体内容。
+
+git中由三种object，第一种blob类型，它只储存的是一个文件的内容，不包括文件名等其他信息。然后将这些信息经过SHA1哈希算法得到对应的哈希值，作为这个object在Git仓库中的唯一身份证。
+
+```bash
+#创建文件现有内容的一个副本。
+git hash-boject -w filename #将文件现有的内容压缩成二进制文件，并保存到Git中。
+
+#Git会在一个名叫“索引”的区域记录所有发生了变化的文件。然后等到所有的变更都结束后，将索引中的这些文件一起写入正式的版本历史记录中。
+git update-index #文件名、二进制对象名（哈希值）以及索引中文件的访问权限。
+
+git add --all #相当于针对当前项目中所有发生了变化的文件执行上述两个步骤
+```
+
+###### 将暂存区添加到本地仓库
+
+索引保存发生了变化的文件信息。等到修改完成，所有这些信息都会被写入版本的历史记录中，这相当于生成一个当前项目的快照。项目的历史记录由不同时间点的项目快照组成。Git可以将项目恢复成任何一个快照。
+
+第二种tree，它将当前的目录结构打了一个快照。从它储存的内容来看可以发现它储存了一个目录结构（类似于文件夹），以及每一个文件（或者子文件夹）的权限、类型、对应的身份证（SHA1值）、以及文件名。
+
+第三种commit，它储存的是一个提交的信息，包括对应目录结构的快照tree的哈希值，上一个提交的哈希值，提交的作者以及提交的具体时间，最后是该提交的信息。
+
+```bash
+git write-tree #根据当前目录结构生成一个Git对象。
+#git commit-tree可以将目录树对象写入到版本的历史记录中。
+git commit-tree <tree-id>
+```
+
+##### 常用指令
 
 | 指令                                                 | 作用                                                         |
 | ---------------------------------------------------- | ------------------------------------------------------------ |
 | `git help -g`                                        | 展示帮助信息                                                 |
 | `git fetch --all && git reset --hard origin/master`  | 抛弃本地所有的修改，回到远程仓库的状态。                     |
-| `git update-ref -d HEAD`                             | 也就是把所有的改动都重新放回工作区，并**清空所有的 commit**，这样就可以重新提交第一个 commit 了 |
-| `git diff`                                           | 输出**工作区**和**暂存区**的 different (不同)。              |
-| `git diff <commit-id> <commit-id>`                   | 还可以展示本地仓库中任意两个 commit 之间的文件变动           |
-| `git diff --cached`                                  | 输出**暂存区**和本地最近的版本 (commit) 的 different (不同)。 |
-| `git diff HEAD`                                      | 输出**工作区**、**暂存区** 和本地最近的版本 (commit) 的 different (不同)。 |
+| `git diff --cached`                                  | 输出**暂存区**和本地最近的版本 (commit) 的不同。             |
+| `git diff HEAD`                                      | 输出**工作区**、**暂存区** 和本地最近的版本 (commit) 的不同。 |
 | `git checkout -`                                     | 快速切换到上一个分支                                         |
 | `git branch -vv`                                     | 展示本地分支关联远程仓库的情况                               |
 | `git branch -u origin/mybranch`                      | 关联之后，`git branch -vv` 就可以展示关联的远程分支名了，同时推送到远程仓库直接：`git push`，不需要指定远程仓库了。 |
@@ -50,15 +66,10 @@ Git会将整个数据库储存在.git/目录下，Git提供了一个能够帮助
 | `git remote add origin <remote-url>`                 | 增加远程仓库                                                 |
 | `git log`                                            | 查看 commit 历史                                             |
 | `git remote`                                         | 列出所有远程仓库                                             |
-| `git whatchanged --since='2 weeks ago'`              | 查看两个星期内的改动                                         |
+|                                                      |                                                              |
 | `git stash`                                          | 存储当前的修改，但不用提交 commit                            |
 
-###### 恢复删除的文件
-```sh
-git rev-list -n 1 HEAD -- <file_path> #得到 deleting_commit
-
-git checkout <deleting_commit>^ -- <file_path> #回到删除文件 deleting_commit 之前的状态
-```
+ 如果你使用 `git status -s` 命令或 `git status --short`命令，你将得到一种更为紧凑的格式输出。新添加的未跟踪文件前面有 `??` 标记，新添加到暂存区中的文件前面有 `A` 标记，修改过的文件前面有 `M` 标记。 你可能注意到了 `M` 有两个可以出现的位置，出现在右边的 `M` 表示该文件被修改了但是还没放入暂存区，出现在靠左边的 `M` 表示该文件被修改了并放入了暂存区。
 
 ###### 回到某个 commit 的状态，并删除后面的 commit
 
@@ -86,6 +97,16 @@ git checkout <branch-name> && git cherry-pick <commit-id>
 git config --global alias.<handle> <command>
 比如：git status 改成 git st，这样可以简化命令
 git config --global alias.st status
+
+$ git config --global alias.co checkout
+$ git config --global alias.br branch
+$ git config --global alias.ci commit
+$ git config --global alias.st status
+$ git config --global alias.unstage 'reset HEAD --'
+$ git config --global alias.last 'log -1 HEAD'
+$ git config --global alias.visual '!gitk'
+# 我提交(commit)里的用户名和邮箱不对
+git commit --amend --author "New Authorname <authoremail@mydomain.com>"
 ```
 
 ###### 展示所有 stashes
@@ -96,11 +117,6 @@ git stash list
 ###### 从 stash 中拿出某个文件的修改
 ```sh
 git checkout <stash@{n}> -- <file-path>
-```
-
-###### 展示简化的 commit 历史
-```sh
-git log --pretty=oneline --graph --decorate --all
 ```
 
 ###### 从远程仓库根据 ID，拉下某一状态，到本地分支
@@ -116,10 +132,6 @@ git config --local --list (当前目录)
 git config --global --list (全局)
 ```
 
-要查看哪些文件处于什么状态，可以用 `git status` 命令。`git status` 命令的输出十分详细，但其用语有些繁琐。 如果你使用 `git status -s` 命令或 `git status --short`命令，你将得到一种更为紧凑的格式输出。新添加的未跟踪文件前面有 `??` 标记，新添加到暂存区中的文件前面有 `A` 标记，修改过的文件前面有 `M` 标记。 你可能注意到了 `M` 有两个可以出现的位置，出现在右边的 `M` 表示该文件被修改了但是还没放入暂存区，出现在靠左边的 `M` 表示该文件被修改了并放入了暂存区。
-
-要从 Git 中移除某个文件，就必须要从已跟踪文件清单中移除确切地说，是从暂存区域移除，然后提交。 可以用 `git rm` 命令完成此项工作，并连带从工作目录中删除指定的文件，这样以后就不会出现在未跟踪文件清单中了。另外一种情况是，我们想把文件从 Git 仓库中删除，但仍然希望保留在当前工作目录中。 换句话说，你想让文件保留在磁盘，但是并不想让 Git 继续跟踪。 当你忘记添加 `.gitignore` 文件，不小心把一个很大的日志文件或一堆 `.a` 这样的编译生成文件添加到暂存区时，这一做法尤其有用。 为达到这一目的，使用 `--cached` 选项。修改文件名`git mv old new`, 然后提交。
-
 ###### 撤销操作
 
 提交完了才发现漏掉了几个文件没有添加，或者提交信息写错了。 此时，可以运行带有 `--amend` 选项的提交命令尝试重新提交：`git commit --amend`这个命令会将暂存区中的文件提交。 如果自上次提交以来你还未做任何修改，那么快照会保持不变，而你所修改的只是提交信息。文本编辑器启动后，可以看到之前的提交信息。 编辑后保存会覆盖原来的提交信息。最终你只会有一个提交 - 第二次提交将代替第一次提交的结果
@@ -128,21 +140,7 @@ git config --global --list (全局)
 
 `HEAD`指向的版本就是当前版本，上一个版本就是`HEAD^`，上上一个版本就是`HEAD^^`，当然往上100个版本写100个`^`比较容易数不过来，所以写成`HEAD~100`。因此，Git允许我们在版本的历史之间穿梭，使用命令`git reset --hard commit_id`。穿梭前，用`git log`可以查看提交历史，以便确定要回退到哪个版本。要重返未来，用`git reflog`查看命令历史，以便确定要回到未来的哪个版本。
 
-###### 别名
 
-Git 并不会在你输入部分命令时自动推断出你想要的命令。 如果不想每次都输入完整的 Git 命令，可以通过 `git config` 文件来轻松地为每一个命令设置一个别名。Git 只是简单地将别名替换为对应的命令。 然而，你可能想要执行外部命令，而不是一个 Git 子命令。 如果是那样的话，可以在命令前面加入 `!` 符号。
-
-```bash
-$ git config --global alias.co checkout
-$ git config --global alias.br branch
-$ git config --global alias.ci commit
-$ git config --global alias.st status
-$ git config --global alias.unstage 'reset HEAD --'
-$ git config --global alias.last 'log -1 HEAD'
-$ git config --global alias.visual '!gitk'
-# 我提交(commit)里的用户名和邮箱不对
-git commit --amend --author "New Authorname <authoremail@mydomain.com>"
-```
 
 ###### git fetch
 
@@ -159,27 +157,8 @@ git commit --amend --author "New Authorname <authoremail@mydomain.com>"
 如果你用 `git commit -a` 提交了一次变化(changes)，而你又不确定到底这次提交了哪些内容。 你就可以用下面的命令显示当前`HEAD`上的最近一次的提交(commit):
 
 ```sh
-(master)$ git show
-```
-
-或者
-
-```sh
-$ git log -n1 -p
-```
-
-###### 我的提交信息(commit message)写错了
-
-如果你的提交信息(commit message)写错了且这次提交(commit)还没有推(push), 你可以通过下面的方法来修改提交信息(commit message):
-
-```sh
-$ git commit --amend --only
-```
-
-这会打开你的默认编辑器, 在这里你可以编辑信息. 另一方面, 你也可以用一条命令一次完成:
-
-```sh
-$ git commit --amend --only -m 'xxxxxxx'
+git show
+git log -n1 -p
 ```
 
 ###### 我想从一个提交(commit)里移除一个文件
@@ -449,70 +428,6 @@ HEAD is now at a13b85e
 
 然后, 正常提交。
 
-###### 我把几个提交(commit)提交到了同一个分支，而这些提交应该分布在不同的分支里
-
-假设你有一个`master`分支， 执行`git log`, 你看到你做过两次提交:
-
-```sh
-(master)$ git log
-
-commit e3851e817c451cc36f2e6f3049db528415e3c114
-Author: Alex Lee <alexlee@example.com>
-Date:   Tue Jul 22 15:39:27 2014 -0400
-
-    Bug #21 - Added CSRF protection
-
-commit 5ea51731d150f7ddc4a365437931cd8be3bf3131
-Author: Alex Lee <alexlee@example.com>
-Date:   Tue Jul 22 15:39:12 2014 -0400
-
-    Bug #14 - Fixed spacing on title
-
-commit a13b85e984171c6e2a1729bb061994525f626d14
-Author: Aki Rose <akirose@example.com>
-Date:   Tue Jul 21 01:12:48 2014 -0400
-
-    First commit
-```
-
-让我们用提交hash(commit hash)标记bug (`e3851e8` for #21, `5ea5173` for #14).
-
-首先, 我们把`master`分支重置到正确的提交(`a13b85e`):
-
-```sh
-(master)$ git reset --hard a13b85e
-HEAD is now at a13b85e
-```
-
-现在, 我们对 bug #21 创建一个新的分支:
-
-```sh
-(master)$ git checkout -b 21
-(21)$
-```
-
-接着, 我们用 *cherry-pick* 把对bug #21的提交放入当前分支。 这意味着我们将应用(apply)这个提交(commit)，仅仅这一个提交(commit)，直接在HEAD上面。
-
-```sh
-(21)$ git cherry-pick e3851e8
-```
-
-这时候, 这里可能会产生冲突， 参见[交互式 rebasing 章](#interactive-rebase) [**冲突节**](#merge-conflict) 解决冲突.
-
-再者， 我们为bug #14 创建一个新的分支, 也基于`master`分支
-
-```sh
-(21)$ git checkout master
-(master)$ git checkout -b 14
-(14)$
-```
-
-最后, 为 bug #14 执行 `cherry-pick`:
-
-```sh
-(14)$ git cherry-pick 5ea5173
-```
-
 ###### 我想删除上游(upstream)分支被删除了的本地分支
 
 一旦你在github 上面合并(merge)了一个pull request, 你就可以删除你fork里被合并的分支。 如果你不准备继续在这个分支里工作, 删除这个分支的本地拷贝会更干净，使你不会陷入工作分支和一堆陈旧分支的混乱之中。
@@ -523,72 +438,13 @@ $ git fetch -p
 
 ###### 我不小心删除了我的分支
 
-如果你定期推送到远程, 多数情况下应该是安全的，但有些时候还是可能删除了还没有推到远程的分支。 让我们先创建一个分支和一个新的文件:
-
-```sh
-(master)$ git checkout -b my-branch
-(my-branch)$ git branch
-(my-branch)$ touch foo.txt
-(my-branch)$ ls
-README.md foo.txt
-```
-
-添加文件并做一次提交
-
-```sh
-(my-branch)$ git add .
-(my-branch)$ git commit -m 'foo.txt added'
-(my-branch)$ foo.txt added
- 1 files changed, 1 insertions(+)
- create mode 100644 foo.txt
-(my-branch)$ git log
-
-commit 4e3cd85a670ced7cc17a2b5d8d3d809ac88d5012
-Author: siemiatj <siemiatj@example.com>
-Date:   Wed Jul 30 00:34:10 2014 +0200
-
-    foo.txt added
-
-commit 69204cdf0acbab201619d95ad8295928e7f411d5
-Author: Kate Hudson <katehudson@example.com>
-Date:   Tue Jul 29 13:14:46 2014 -0400
-
-    Fixes #6: Force pushing after amending commits
-```
-
-现在我们切回到主(master)分支，‘不小心的’删除`my-branch`分支
-
-```sh
-(my-branch)$ git checkout master
-Switched to branch 'master'
-Your branch is up-to-date with 'origin/master'.
-(master)$ git branch -D my-branch
-Deleted branch my-branch (was 4e3cd85).
-(master)$ echo oh noes, deleted my branch!
-oh noes, deleted my branch!
-```
-
-在这时候你应该想起了`reflog`, 一个升级版的日志，它存储了仓库(repo)里面所有动作的历史。
+有些时候还是可能删除了还没有推到远程的分支。 误删了某个分支如何还原分支中的文件。在这时候你应该想起了`reflog`, 它存储了仓库(repo)里面所有动作的历史。
 
 ```
-(master)$ git reflog
-69204cd HEAD@{0}: checkout: moving from my-branch to master
-4e3cd85 HEAD@{1}: commit: foo.txt added
-69204cd HEAD@{2}: checkout: moving from master to my-branch
+git reflog #找到分支的<commit id>
+git checkout -b my-branch-help # 新建一个分支并切换到此分支
+git reset --hard 4e3cd85<commit id>
 ```
-
-正如你所见，我们有一个来自删除分支的提交hash(commit hash)，接下来看看是否能恢复删除了的分支。
-
-```sh
-(master)$ git checkout -b my-branch-help
-Switched to a new branch 'my-branch-help'
-(my-branch-help)$ git reset --hard 4e3cd85
-HEAD is now at 4e3cd85 foo.txt added
-(my-branch-help)$ ls
-README.md foo.txt
-```
-
-看! 我们把删除的文件找回来了。 Git的 `reflog` 在rebasing出错的时候也是同样有用的。
 
 ###### 我想删除一个分支
 
@@ -920,48 +776,7 @@ $ git stash create
 $ git stash store -m "commit-message" CREATED_SHA1
 ```
 
-##### 杂项(Miscellaneous Objects)
 
-###### 克隆所有子模块
-
-```sh
-$ git clone --recursive git://github.com/foo/bar.git
-```
-
-如果已经克隆了:
-
-```sh
-$ git submodule update --init --recursive
-```
-
-###### 删除标签(tag)
-
-```sh
-$ git tag -d <tag_name>
-$ git push <remote> :refs/tags/<tag_name>
-```
-
-###### 恢复已删除标签(tag)
-
-如果你想恢复一个已删除标签(tag), 可以按照下面的步骤: 首先, 需要找到无法访问的标签(unreachable tag):
-
-```sh
-$ git fsck --unreachable | grep tag
-```
-
-记下这个标签(tag)的hash，然后用Git的 [update-ref](http://git-scm.com/docs/git-update-ref):
-
-```sh
-$ git update-ref refs/tags/<tag_name> <hash>
-```
-
-这时你的标签(tag)应该已经恢复了。
-
-###### 已删除补丁(patch)
-
-如果某人在 GitHub 上给你发了一个pull request, 但是然后他删除了他自己的原始 fork, 你将没法克隆他们的提交(commit)或使用 `git am`。在这种情况下, 最好手动的查看他们的提交(commit)，并把它们拷贝到一个本地新分支，然后做提交。
-
-做完提交后, 再修改作者，参见[变更作者](#commit-wrong-author)。 然后, 应用变化, 再发起一个新的pull request。
 
 ##### 跟踪文件(Tracking Files)
 
@@ -976,69 +791,3 @@ $ git update-ref refs/tags/<tag_name> <hash>
 ```sh
 (master)$ git rm --cached log.txt
 ```
-
-##### 配置(Configuration)
-
-###### 我想给一些Git命令添加别名(alias)
-
-在 OS X 和 Linux 下, 你的 Git的配置文件储存在 ```~/.gitconfig```。我在```[alias]``` 部分添加了一些快捷别名(和一些我容易拼写错误的)，如下:
-
-```vim
-[alias]
-    a = add
-    amend = commit --amend
-    c = commit
-    ca = commit --amend
-    ci = commit -a
-    co = checkout
-    d = diff
-    dc = diff --changed
-    ds = diff --staged
-    f = fetch
-    loll = log --graph --decorate --pretty=oneline --abbrev-commit
-    m = merge
-    one = log --pretty=oneline
-    outstanding = rebase -i @{u}
-    s = status
-    unpushed = log @{u}
-    wc = whatchanged
-    wip = rebase -i @{u}
-    zap = fetch -p
-```
-
-###### 我想缓存一个仓库(repository)的用户名和密码
-
-你可能有一个仓库需要授权，这时你可以缓存用户名和密码，而不用每次推/拉(push/pull)的时候都输入，Credential helper能帮你。
-
-```sh
-$ git config --global credential.helper cache
-# Set git to use the credential memory cache
-```
-
-```sh
-$ git config --global credential.helper 'cache --timeout=3600'
-# Set the cache to timeout after 1 hour (setting is in seconds)
-```
-
-###### 我不知道我做错了些什么
-
-你把事情搞砸了：你 `重置(reset)` 了一些东西, 或者你合并了错误的分支, 亦或你强推了后找不到你自己的提交(commit)了。有些时候, 你一直都做得很好, 但你想回到以前的某个状态。
-
-这就是 `git reflog` 的目的， `reflog` 记录对分支顶端(the tip of a branch)的任何改变, 即使那个顶端没有被任何分支或标签引用。基本上, 每次HEAD的改变, 一条新的记录就会增加到`reflog`。遗憾的是，这只对本地分支起作用，且它只跟踪动作 (例如，不会跟踪一个没有被记录的文件的任何改变)。
-
-```sh
-(master)$ git reflog
-0a2e358 HEAD@{0}: reset: moving to HEAD~2
-0254ea7 HEAD@{1}: checkout: moving from 2.2 to master
-c10f740 HEAD@{2}: checkout: moving from master to 2.2
-```
-
-上面的reflog展示了从master分支签出(checkout)到2.2 分支，然后再签回。 那里，还有一个硬重置(hard reset)到一个较旧的提交。最新的动作出现在最上面以 `HEAD@{0}`标识.
-
-如果事实证明你不小心回移(move back)了提交(commit), reflog 会包含你不小心回移前master上指向的提交(0254ea7)。
-
-```sh
-$ git reset --hard 0254ea7
-```
-
-然后使用git reset就可以把master改回到之前的commit，这提供了一个在历史被意外更改情况下的安全网。
