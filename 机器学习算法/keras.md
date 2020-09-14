@@ -4,6 +4,33 @@
 
 #### 模型训练
 
+##### 回调函数
+
+`ReduceLROnPlateau`在损失指标停止改善或达到稳定时降低学习率。
+
+```python
+from keras.callbacks import ReduceLROnPlateau
+reduce_lr = ReduceLROnPlateau(monitor='val_loss', factor=0.2,
+                              patience=5, min_lr=0.001)
+model.fit(X_train, Y_train, callbacks=[reduce_lr])
+#受一个列表，因此可以安排多个回调。
+
+from keras.callbacks import LearningRateScheduler
+
+def scheduler(epoch, lr): #定义回调schedule
+   if lr < 0.001: return lr * 1.5 #如果lr太小,增加lr
+   elif epoch < 5: return lr #前五个epoch，不改变lr
+   elif epoch < 10: return lr * tf.math.exp(-0.1) #第五到第十个epoch，减少lr
+   else: return lr * tf.math.exp(-0.05) #第10个epoch之后，减少量更少
+  
+callback = LearningRateScheduler(scheduler) #创建回调对象
+model.fit(X_train, y_train, epochs=15, callbacks=[callback])
+```
+
+`EarlyStopping`可以非常有助于防止在训练模型时产生额外的冗余运行。`TerminateOnNaN`有助于防止在训练中产生梯度爆炸问题，因为输入`NaN`会导致网络的其他部分发生爆炸。
+
+`ModelCheckpoint`可以以某种频率保存模型的权重
+
 #### 评估模型
 
 #### 模型预测
