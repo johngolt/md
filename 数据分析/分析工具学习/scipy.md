@@ -149,24 +149,6 @@ $$
 
 ##### Univariate and Multivariate kernel density estimation
 
-#### Spatial
-
-##### Nearest-neighbor Queries
-
-#### Linear algebra
-
-##### Basics
-
-##### Eigenvalue problems
-
-##### Decompositions
-
-##### Matrix Functions
-
-##### Matrix Equation Solvers
-
-##### Special Matrices
-
 #### Fourier Transforms(`fftpack`)
 
 ##### Fast Fourier transforms

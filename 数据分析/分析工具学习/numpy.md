@@ -1,69 +1,206 @@
-The dots (...) represent as many colons as needed to produce a complete indexing tuple. if x is an array with 5 axes, then: x[1,2,...] is equivalent to x[1,2,:,:,:], and x[4,...,5,:] to x[4,:,:,5,:].
+`C`语言中，多维数组的第`0`轴是最外层的。即`0`轴的下标增加`1`时，元素的地址增加的字节数最多；`Fortran`语言中，多维数组的第`0`轴是最内层的。即`0`轴的下标增加`1`时，元素的地址增加的字节数最少。`numpy`中默认是以 `C`语言格式存储数据。如果希望改为`Fortran`格式，则只需要在创建数组时，设置`order`参数为`"F"`
 
-However, if one wants to perform an operation on each element in the array, one can use the `flat` attribute which is an iterator over all the elements of the array. The order of the elements in the array resulting from `ravel()` is normally “C-style”, that is, the rightmost index “changes the fastest”, so the element after a[0,0] is a[0,1]. If the array is reshaped to some other shape, again the array is treated as “C-style”. NumPy normally creates arrays stored in this order, so `ravel()` will usually not need to copy its argument, but if the array was made by taking slices of another array or created with unusual options, it may need to be copied. The functions `ravel()` and `reshape()` can also be instructed, using an optional argument, to use FORTRAN-style arrays, in which the leftmost index changes the fastest.
+`np`有五种数值类型：布尔型`bool`、整型`int`、无符号整型`uint`、浮点型`float`、复数`complex`。`np`的类型函数可以将python的数值转化为`np`数组`scalar`。`np`返回数组中的元素时返回的是数组`scalar`，数组`scalar`与python`scalar`在大多数情况下可以通用，除非要求确定返回值是否为python`scalar`或者需要使用到数组`scalar`的特定属性。
 
-The `reshape` function returns its argument with a modified shape, whereas the `ndarray.resize` method modifies the array itself. The function `column_stack` stacks `1D` arrays as columns into a `2D` array，arrays的维度可以不保持一致. It is equivalent to `hstack` only for `2D` arrays. On the other hand, the function `row_stack` is equivalent to `vstack` for any input arrays. In general, for arrays of with more than two dimensions, `hstack` stacks along their second axes, `vstack` stacks along their first axes, and `concatenate` allows for an optional arguments giving the number of the axis along which the concatenation should happen.
-Using `hsplit`, you can split an array along its horizontal axis, either by specifying the number of equally shaped arrays to return, or by specifying the columns after which the division should occur:
-`vsplit` splits along the vertical axis, and `array_split` allows one to specify along which axis to split.
+![`ndarray`对象的内存结构](../../picture/2/65.png)
 
-Different array objects can share the same data. The view method creates a new array object that looks at the same data. Slicing an array returns a view of it. The `copy` method makes a complete copy of the array and its data.
-Sometimes `copy` should be called after slicing if the original array is not required anymore. 
-Broadcasting allows universal functions to deal in a meaningful way with inputs that do not have exactly the same shape.
+| 构成       | 说明                                                         |
+| ---------- | ------------------------------------------------------------ |
+| `ndim`     | 显示数组的轴线数量                                           |
+| `shape`    | 显示再每个维度里的数组的大小，可以使用`ndarray.reshape()`方法调整数组的维度。 |
+| `size`     | 数组中所有元素的总量                                         |
+| `dtype`    | 显示数组元素的类型，`ndarray.astype()`方法可以对数组元素类型进行转换 |
+| `itemsize` | 数组中每个元素的字节存储大小                                 |
+| `strides`  | 整数元组，每个轴上相邻两个元素的地址差。轴的下标增加1时，数据存储区中的指针增加的字节数 |
+| `data`     | 指向数组的数据的存储区。元素在数据存储区中的排列格式有两种：`C`语言格式和`Fortran`语言格式。 |
 
-##### Data types
+通过`ndarray.view()`方法，从同一块数据区创建不同的`dtype`数组。即使用不同的数值类型查看同一段内存中的二进制数据。它们使用的是同一块内存。通过`ndarray.resize`修改`shape`的时候，修改数组自身。
 
-There are 5 basic numerical types representing booleans (bool), integers (int), unsigned integers (uint) floating point (float) and complex. Those with numbers in their name indicate the bitsize of the type. Data-types can be used as functions to convert python numbers to array scalars, python sequences of numbers to arrays of that type, or as arguments to the `dtype` keyword that many numpy functions or methods accept. To convert the type of an array, use the `.astype()` method  or the type itself as a function. NumPy generally returns elements of arrays as array scalars (a scalar with an associated `dtype`). Array scalars differ from Python scalars, but for the most part they can be used interchangeably. when code requires very specific attributes of a scalar or when it checks specifically whether a value is a Python scalar. Generally, problems are easily fixed by explicitly converting array scalars to Python scalars, using the corresponding Python type function. The primary advantage of using array scalars is that they preserve the array type. Therefore, the use of array scalars ensures identical behavior between arrays and scalars, irrespective of whether the value is inside an array or not. NumPy scalars also have many of the same methods arrays do.
+数组的`flags`属性描述了数据存储区域的一些属性
 
-The fixed size of NumPy numeric types may cause overflow errors when a value requires more memory than available in the data type. The behavior of NumPy and Python integer types differs significantly for integer overflows and may confuse users expecting NumPy integers to behave similar to Python’s int. Unlike NumPy, the size of Python’s int is flexible. This means Python integers may expand to accommodate any integer and will not overflow.
+| `flags`属性    | 说明                                    |
+| -------------- | --------------------------------------- |
+| `C_CONTIGUOUS` | 数据存储区域是否是`C`语言格式的连续区域 |
+| `F_CONTIGUOUS` | 数据存储区域是否是`F`语言格式的连续区域 |
+| `OWNDATA`      | 数组是否拥有此数据存储区域。            |
 
-NumPy provides `numpy.iinfo` and `numpy.finfo` to verify the minimum or maximum values of NumPy integer and floating point values respectively
+当处理`ndarray`时，它的数据存储区有时被拷贝，但有时并不被拷贝。
 
-##### Array Creation
+| 分类         | 说明                                                         |
+| ------------ | ------------------------------------------------------------ |
+| 完全不拷贝   | 简单的赋值操作并不拷贝`ndarray`的任何数据，这种情况下是新的变量引用`ndarray`对象。 |
+| 视图和浅拷贝 | 不同的`ndarray`可能共享相同的数据存储区。                    |
+| 深拷贝       | `ndarray.copy()`操作会返回一个完全的拷贝，不仅拷贝`ndarray`也拷贝数据存储区。 |
 
-There are 5 general mechanisms for creating arrays: Conversion from other Python structures; Intrinsic `numpy` array creation objects; Reading arrays from disk, either from standard or custom formats; Creating arrays from raw bytes through the use of strings or buffers; Use of special library functions.
+如`ndarray.view()`方法创建一个新的`ndarray`但是与旧`ndarray`共享相同的数据存储区。新创建的那个数组称作视图数组。对于视图数组，它并不拥有数据存储区域，通过`ndarray.base`返回的是拥有数据存储区的那个底层`ndarray`。而非视图数组的`ndarray.base`返回`None`。修改数组的内容时，会直接修改数据存储区域。所有使用该数据存储区域的数组都将被同时修改。`ndarray.flags.owndata`返回数组是否拥有基础数据。对于数组的分片操作返回的是一个`ndarray`的视图。对数组的索引返回的不是视图，而是含有基础数据。
 
-##### Indexing
+##### 索引
 
-###### Single element indexing
+一维数组的索引和列表相同。假设`a1` 是一维数组。
 
-Single element indexing for a 1-D array is what one expects. It work exactly like that for other standard Python sequences. It is 0-based, and accepts negative indices for indexing from the end of the array. Unlike lists and tuples, numpy arrays support multidimensional indexing for multidimensional arrays. That means that it is not necessary to separate each dimension’s index into its own set of square brackets. Note that if one indexes a multidimensional array with fewer indices than dimensions, one gets a subdimensional array.  NumPy uses C-order indexing. That means that the last index usually represents the most rapidly changing memory location, unlike Fortran or IDL, where the first index represents the most rapidly changing location in memory.
+| 索引     | 说明                                                         |
+| -------- | ------------------------------------------------------------ |
+| 整数     | `a1[i]`指定一个整数`i`作为索引下标                           |
+| 切片     | `a1[i:j]`获得的新的数组是原始数组的一个视图，它与原始数组共享相同的一块数据存储空间 |
+| 整数列表 | `a1[[i1,i2,i3]]`将列表中的每个整数作为下标，使用列表作为下标得到的数组为不和原始数组共享数据 |
+| 整数数组 | `a1[a2]`得到一个形状和`a2`相同的新数组。新数组的每个元素都是`a2`中对应位置的值作为下标从原始数组中获得的值。新数组不和原始数组共享数据 |
+| 布尔数组 | `a1[b]`获得数组`a1`中与数组`b`中的`True`对应的元素。新数组不和原始数组共享数据。布尔数组的形状与数组`a1` 完全相同，它就是一个`mask` |
 
-###### index arrays
+上述介绍的一维数组的索引，既可以用于数组元素的选取，也可以用于数组元素的赋值。你可以赋一个值，此时该值会填充被选取出来的每一个位置。你可以赋值一个数组或者列表，此时数组或者列表的形状要跟你选取出来的位置的形状完全匹配
 
-NumPy arrays may be indexed with other arrays or any other sequence- like object that can be converted to an array, such as lists, with the exception of tuples. For all cases of index arrays, what is returned is a copy of the original data, not a view as one gets for slices. Index arrays must be of integer type. Each value in the array indicates which value in the array to use in place of the index. Negative values are permitted and work as they do with single indices or slices. Generally speaking, what is returned when index arrays are used is an array with the same shape as the index array, but with the type and values of the array being indexed. 
+多维数组使用元组作为数组的下标，如`a[1,2]`，当然你也可以添加圆括号为`a[(1,2)]`。多维数组的下标必须是一个长度和数组的维度`ndim`相等的元组。如果下标元组的长度大于数组的维度`ndim`，则报错；如果下标元组的长度小于数组的维度`ndim`，则在元组的后面补 `:`，使得下标元组的长度等于数组维度`ndim`。如果下标对象不是元组，则`Numpy`会首先将其转换为元组。
 
-###### indexing Multi-dimensional arrays
+- 多维数组的下标全部是整数或者切片：索引得到的是元素数组的一个视图。
+- 多维数组的下标全部是整数数组：假设多维数组为$\mathbf{X}$。假设这些下标整数数组依次为$A_{1}, A_{2}, \cdots, A_{n}$。这$n$个数组必须满足广播条件。假设它们进行广播之后的维度为$\mathbf{M}$，形状为$\left(d_{0}, d_{1}, \cdots, d_{M-1}\right)$即：广播之后有$M$个轴：第 0 轴长度为$d_0$，...，第$M-1$轴长度为$d_{M-1}$。假设$A_{1}, A_{2}, \cdots, A_{n}$经过广播之后分别为数组$A_{1}^{\prime}, A_{2}^{\prime}, \cdots, A_{n}^{\prime}$则：索引的结果也是一个数组 $R$，结果数组$R$的维度为$M$，形状为$\left(d_{0}, d_{1}, \cdots, d_{M-1}\right)$。其中$R\left[i_{0}, i_{1}, \cdots, i_{M-1}\right]=$
+  $X\left[A_{1}^{\prime}\left[i_{0}, i_{1}, \cdots, i_{M-1}\right], A_{2}^{\prime}\left[i_{0}, i_{1}, \cdots, i_{M-1}\right], \cdots, A_{n}^{\prime}\left[i_{0}, i_{1}, \cdots, i_{M-1}\right]\right]$。
+- 多维数组的下标包含整数数组、切片：则切片/整数下标与整数数组下标分别处理。
+- 多维数组的下标是布尔数组或者下标元组中包含了布尔数组，则相当于将布尔数组通过`nonzero` 将布尔数组转换成一个整数数组的元组，然后使用整数数组进行下标运行。`nonzero(a)`返回数组`a`中，值非零的元素的下标。它返回值是一个长度为`a.ndim`的元组，元组的每个元素都是一个一维的整数数组，其值为非零元素的下标在对应轴上的值。
 
-```python
-y[np.array([0,2,4]), np.array([0,1,2])]
-```
+当下标使用整数或者切片时，所取得的数据在数据存储区域中是等间隔分布的。因为只需要修改数组的`ndim/shape/strides`等属性以及指向数据存储区域的`data`指针就能够实现整数和切片下标的索引。所以新数组和原始数组能够共享数据存储区域。当使用整数数组，布尔数组时，不能保证所取得的数据在数据存储区中是等间隔的，因此无法和原始数组共享数据，只能对数据进行复制。
 
-In this case, if the index arrays have a matching shape, and there is an index array for each dimension of the array being indexed, the resultant array has the same shape as the index arrays, and the values correspond to the index set for each position in the index arrays. In this example, the first index value is 0 for both index arrays, and thus the first value of the resultant array is y[0,0]. The next value is y[2,1], and the last is y[4,2].
+| 函数                               | 描述                                                         |
+| ---------------------------------- | ------------------------------------------------------------ |
+| `concatenate((a1,a2,...), axis=0)` | 连接多个数组。其中`(a1,a2,...)`为数组的序列，给出了待连接的数组，它们沿着`axis`指定的轴连接。 |
+| `vstack(tup)`                      | 沿着 0 轴拼接数组                                            |
+| `hstack(tup)`                      | 沿着 1 轴拼接数组                                            |
+| `column_stack(tup)`                | 类似于`hstack`，但是如果被拼接的数组是一维的，则将其形状修改为二维的`(N,1)`。 |
+| `c_`                               | 对象的`[]`方法也可以用于按**列**连接数组。但是如果被拼接的数组是一维的，则将其形状修改为二维的`(N,1)`。 |
+| `split(ary, indices, axis=0)`      | 用于沿着指定的轴拆分数组`array`。`indices`指定了拆分点：如果为整数`N`，则表示平均拆分成`N`份。如果不能平均拆分，则报错 如果为序列，则该序列指定了划分区间--无需指定最开始的`0`起点和终点。 |
+| `transpose(a, axis=None)`          | 重置轴序。如果`axes=None`，则默认重置为逆序的轴序（如原来的`shape=(1,2,3)`，逆序之后为`(3,2,1)`）。如果`axes!=None`，则要给出重置后的轴序。它获得的是原数组的视图。 |
+| `swapaxes(a, axis1, axis2)`        | 交换指定的两个轴`axis1/axis2`。它获得是原数组的视图。        |
 
-If the index arrays do not have the same shape, there is an attempt to broadcast them to the same shape. If they cannot be broadcast to the same shape, an exception is raised. The broadcasting mechanism permits index arrays to be combined with scalars for other indices. The effect is that the scalar value is used for all the corresponding values of the index arrays. it is possible to only partially index an array with index arrays.
+##### `ufunc`
 
-```python
-y[np.array([0,2,4])]
-# What results is the construction of a new array where each value of the index array selects one row from the array being indexed and the resultant array has the resulting shape
-```
+当使用`ufunc`函数对两个数组进行计算时，`ufunc`函数会对这两个数组的对应元素进行计算。这就要求这两个数组的形状相同。
 
-  Boolean arrays must be of the same shape as the initial dimensions of the array being indexed. In the most straightforward case, the boolean array has the same shape. in the boolean case, the result is a 1-D array containing all the elements in the indexed array corresponding to all the true elements in the boolean array. As with index arrays, what is returned is a copy of the data, not a view as one gets with slices. In general, when the boolean array has fewer dimensions than the array being indexed, this is equivalent to `y[b, …]`, which means `y` is indexed by `b` followed by as many as are needed to fill out the rank of `y`. Thus the shape of the result is one dimension containing the number of `True` elements of the boolean array, followed by the remaining dimensions of the array being indexed.
+| 函数                          | 描述                                                         |
+| ----------------------------- | ------------------------------------------------------------ |
+| `isnan(x)`                    | 返回`x`是否是个`NaN`                                         |
+| `isfinite(x)`                 | 返回`x`是否是个有限大小的数                                  |
+| `isposinf(x)`                 | 返回`x`是否是个正无穷大的数                                  |
+| `isneginf(x)`                 | 返回`x`是否是个负无穷大的数，                                |
+| `isinf(x)`                    | 返回`x`是否是个无穷大的数                                    |
+| `numpy.logical_and(x1,x2)`    | 与                                                           |
+| `numpy.logical_or(x1,x2)`     | 或                                                           |
+| `numpy.logical_not(x)`        | 否                                                           |
+| `numpy.logical_xor(x1,x2)`    | 异或                                                         |
+| `np.add.reduce(array,axis=0)` | 沿着`axis`参数指定的轴，对数组进行操作。                     |
+| `ufunc.accumulate`            | 保存所有的中间计算结果，从而使得返回数组的形状和输入数组的形状相同。 |
+| `ufunc.outer`                 | 相当于将`<op>`运算符对输入数组`A`和输入数组`B`的每一对元素对`(a,b)`起作用 |
+| `ndarray.ravel`               | 将多为数组按照`C`方式展开成一维数组。                        |
+| `np.iinfo(dtype)`             | 得到`np`数值类型的设定的最小值                               |
+| `np.finfo(dtype)`             | 得到`np`数值类型的设定的最大值                               |
 
-```python
-x = np.arange(30).reshape(2,3,5)
-b = np.array([[True, True, False], [False, True, True]])
-x[b] # shape=(2,2,5) 
-```
+在`numpy`中，`numpy.nan`表示`NaN`，它并不等价于`numpy.inf`。`numpy.inf`：正无穷。`numpy.PINF`：正无穷
 
-In effect, the slice is converted to an index array that is broadcast with the index array to produce a resultant array of shape. Likewise, slicing can be combined with broadcasted boolean indices. To facilitate easy matching of array shapes with expressions and in assignments, the `np.newaxis` object can be used within array indices to add new dimensions with a size of 1.
+进行逻辑运算时，对于数值零视作`False`；对数值非零视作`True`。也可以通过`vectorize()`函数来实现`frompyfunc()`的功能。`np.vectorize(func, otypes='')`。其中：`func`：计算单个元素的函数；
 
 ##### Broadcasting
 
-When operating on two arrays, NumPy compares their shapes element-wise. It starts with the trailing dimensions, and works its way forward. Two dimensions are compatible when they are equal, or one of them is 1. If these conditions are not met, a `ValueError` exception is thrown, indicating that the arrays have incompatible shapes. The size of the resulting array is the maximum size along each dimension of the input arrays.
+广播`Broadcasting`机制：首先让所有输入数组都向其中维度最高的数组看齐(在`shape`属性的左侧插入数字`1`)。r如果在各个轴上匹配(输入数组的某个轴的长度为 1，或者与输出数组的各对应轴的长度相同)，然后输出数组的`shape`属性是输入数组的`shape`属性的各轴上的最大值。否则，否则计算出错。
 
 ```python
 A      (4d array):  8 x 1 x 6 x 1
 B      (3d array):      7 x 1 x 5
 Result (4d array):  8 x 7 x 6 x 5
 ```
+
+| 函数                                 | 说明                                                         |
+| ------------------------------------ | ------------------------------------------------------------ |
+| `ndarray.repeat(repeats, axis=None)` | `axis`指定被重复的轴。如果未指定，则将数组展平然后重复。     |
+| `numpy.meshgrid(x1,x2,...xn)`        | 其中`xi`是都是一维数组。返回一个元组 `(X1,X2,...Xn)`，是广播之后的数组。假设`xi`的长度为 `li`，则返回元组的每个数组的形状都是 `(l1,l2,...ln)`。 |
+| `numpy.ix_(x1,x2,x3)`                | 返回一个元组。元组元素分别为对应的可广播的`N`维数组。返回的是广播前的数组。 |
+
+##### 随机数
+
+| 函数                                  | 描述                                                         |
+| ------------------------------------- | ------------------------------------------------------------ |
+| `numpy.random.rand(d0, d1, ..., dn)`  | 指定形状`(d0, d1, ..., dn)`创建一个随机的`ndarray`。每个元素值来自于半闭半开区间`[0,1)`并且服从均匀分布。 |
+| `numpy.random.randn(d0, d1, ..., dn)` | 指定形状`(d0, d1, ..., dn)`创建一个随机的`ndarray`。每个元素值服从正态分布，其中正态分布的期望为0，方差为1 |
+| `randint(low[, high, size])`          | 返回一个随机的整数`ndarray`或者一个随机的整数值。            |
+| `choice(a[, size, replace, p])`       | 从一维数组中采样产生一组随机数或者一个随机数                 |
+| `random_sample([size])`               | 返回一个随机的浮点`ndarray`或者一个随机的浮点值，浮点值是`[0.0,1.0)`之间均匀分布的随机数 |
+| `shuffle(x)`                          | 原地随机混洗`x`的内容，返回`None`。`x`为`array-like`对象，原地修改它 |
+| `permutation(x)`                      | 随机重排`x`，返回重排后的`ndarray`。`x`为`array-like`对象，不会修改它 |
+
+类式用法主要使用`numpy.random.RandomState`类，它是一个`Mersenne Twister`伪随机数生成器的容器。它提供了一些方法来生成各种各样概率分布的随机数。构造函数:`RandomState(seed)`。`seed`是初始化伪随机数生成器。
+
+##### 统计量
+
+`axis`：可以为为`int`或者`tuple`或者`None`：`None`：将`a`展平，在整个数组上操作。`int`：在`a`的指定轴线上操作。如果为`-1`，表示沿着最后一个轴（0轴为第一个轴）。`tuple of ints`：在`a`的一组指定轴线上操作。`keepdims`：如果为`True`，则结果数组的维度与原数组相同，从而可以与原数组进行广播运算。
+
+| 函数                                              | 描述                                                         |
+| ------------------------------------------------- | ------------------------------------------------------------ |
+| `minimum(x1, x2[, out])`                          | 返回两个数组`x1`和`x2`对应位置的最小值。要求`x1`和`x2`形状相同或者广播之后形状相同。 |
+| `histogram(a, bins=10, range=None, normed=False)` | 计算一组数据的直方图。如果`a`不是一维的，则展平为一维。`bins`指定了统计的区间个数 |
+| `nanmin(a[, axis, out, keepdims])`                | 返回`a`中指定轴线上的最小值，忽略`NaN`。                     |
+| `ptp(a[, axis])`                                  | 返回`a`中指定轴线上的最大值减去最小值                        |
+| `argmin(a, axis)`                                 | 返回`a`中指定轴线上最小值的下标                              |
+| `percentile(a, q[, axis])`                        | 返回`a`中指定轴线上`qth `百分比数据。`q`可以为数组或列表     |
+| `partition(a, kth, axis=-1,)`                     | 它将数组执行划分操作：第$k$位左侧的数都小于第$k$；第$k$位右侧的数都大于等于第$k$。它返回划分之后的数组 |
+| `np.argpartition(a, kth, axis=-1,)`               | 返回执行划分之后的下标对应于数组划分之前的位置。             |
+| `sort(a, axis=-1)`                                | 返回`a`在指定轴上排序后的结果并不修改原数组。                |
+| `argsort(a, axis=-1)`                             | 返回`a`在指定轴上排序之后的下标对应于数组划分之前的位置。    |
+| `searchsorted(a, v, side='left')`                 | `a`是个已排序好的一维数组。将`v`插入到 `a`中，`a`还是排序好的。返回值是`v`插入的位置。`side`指定发现数值相等时，插入左侧还是右侧 |
+| `corrcoef(x[, y, rowvar])`                        | 返回皮尔逊积差相关系数                                       |
+| `correlate(a, v[, mode])`                         | 返回两个一维数组的互相关系数                                 |
+| `cov(m[, y, rowvar])`                             | 返回协方差矩阵                                               |
+| `unique(arr)`                                     | 返回`ar`中所有不同的值组成的一维数组。如果`ar`不是一维的，则展平为一维。 |
+| `bincount(x[, weights, minlength])`               | 计算一维数组`x`中每个数出现的次数。要求数组中所有元素都是非负的。其返回数组中第`i`个元素表示：整数`i`在`x`中出现的次数。 |
+| `digitize(x, bins, right=False)`                  | 离散化。如果`x`不是一维的，则展平为一维。它返回一个数组，该数组中元素值给出了`x`中的每个元素将对应于统计区间的哪个区间。区间由`bins`这个一维数组指定。 |
+
+##### 分段函数
+
+| 分段函数                                        | 说明                                                         |
+| ----------------------------------------------- | ------------------------------------------------------------ |
+| `np.where(condition[, x, y])`                   | `condition/x/y`都是数组，要求形状相同或者通过广播之后形状相同。产生结果的方式为： 如果`condition`某个元素为`True`或者非零，则对应的结果元素从`x`中获取；否则对应的结果元素从`y`中获取 |
+| `numpy.select(condlist, choicelist, default=0)` | `condlist`左到右扫描，若发现第 `i` 个元素对应位置为`True`或者非零，选择`choicelist` 的第  `i`  个元素对应位置的值。因此若有多个`condlist`的满足使用第一个遇到的。如果都不满足，使用`default` |
+| `np.piecewise(x, condlist, funclist)`           | 当`condlist[i]`对应位置为 `True`，则该位置由 `funclist[i]`来计算。如果有多个符合条件使用最后一个。 |
+
+`condlist`为长度为 `N`的列表，列表元素为数组。`choicelist`为长度为`N`的列表，列表元素为数组。所有数组都形状相同或广播后形状相同。
+
+`x`：为分段函数的自变量取值数组；`condlist`：为一个列表，列表元素为布尔数组，数组形状和`x`相同；`funclist`：为一个列表，列表元素为函数对象。其长度与`condlist`相同或者比它长1，列表元素可以为数值，表示一个返回为常数值的函数。如果`funclist`长度比`condlist`长1，则当所有的`condlist`都是`False`时，则使用 `funclist[len(condlist)]`来计算；`args/kw`：用于传递给函数对象`funclist[i]`的额外参数。
+
+##### 多项式函数
+
+```python
+numpy.poly1d(c_or_r, r=0, variable=None)
+```
+
+`c_or_r`：一个数组或者序列。其意义取决于`r`。`r`：布尔值。如果为`True`，则`c_or_r`指定的是多项式的根；如果为`False`，则`c_or_r`指定的是多项式的系数。
+
+多项式的属性有：`.coeffs`属性：多项式的系数。`.order`属性：多项式最高次的次数。
+
+多项式的方法有：`.deriv(m=1)`方法：计算多项式的微分。可以通过参数`m`指定微分次数。`.integ(m=1,k=0)`方法：计算多项式的积分。可以通过参数`m`指定积分次数和`k`积分常量
+
+多项式对象可以像函数一样，返回多项式的值多项式对象进行加减乘除，相当于对应的多项式进行计算。也可以使用对应的`numpy.polyadd/polysub/polymul/polydiv/`函数。`numpy.polyder/numpy.polyint`：进行微分/积分操作。`numpy.roots`函数：求多项式的根
+
+使用`np.polyfit(x, y, deg, rcond=None, full=False, w=None, cov=False)`函数可以对一组数据使用多项式函数进行拟合（最小均方误差）。`deg`：拟合多项式的次数。`rcond`：指定了求解过程中的条件：当`某个特征值/最大特征值<rcond`时，该特征值被抛弃。
+
+`numpy`提供了更丰富的多项式函数类。`numpy.polynomial.Polynomial`：一元多次多项`numpy.polynomial.Chebyshev`：切比雪夫多项式； `numpy.polynomial.Laguerre`：拉盖尔多项式；`numpy.polynomial.Legendre`：勒让德多项式；`numpy.polynomial.Hermite`：哈米特多项式`numpy.polynomial.HermiteE`：`HermiteE`多项式
+
+所有的这些多项式的构造函数为： `XXX(coef, domain=None, window=None)`。其中`XXX`为多项式类名。`domain`为自变量取值范围，默认为`[-1,1]`。`window`指定了将`domain`映射到的范围，默认为`[-1,1]`。所有的这些多项式可以使用的方法为：四则运行。`.basis(deg[, domain, window])`：获取转换后的一元多项式。`.convert(domain=None, kind=None, window=None)`：转换为另一个格式的多项式。`kind`为目标格式的多项式的类。`.degree()`：返回次数。`.fit(x, y, deg[, domain, rcond, full, w, window])`：拟合数据，返回拟合后的多项式。`.fromroots(roots[, domain, window])`：从根创建多项式。`.has_samecoef(other)`、`.has_samedomain(other)`、`.has_sametype(other)` 、`.has_samewindow(other)`：判断是否有相同的系数/`domain`/类型/`window`。`.roots()`：返回多项式的根。`.trim([tol])`：将系数小于 `tol`的项截掉
+
+##### 矩阵计算
+
+| 函数                     | 说明                                                         |
+| ------------------------ | ------------------------------------------------------------ |
+| `np.dot(a, b, out=None)` | 计算矩阵的乘积。对于一维数组是内积；对于二维数组是线性代数中的矩阵乘法 |
+| `np.vdot(a, b)`          | 返回一维向量之间的点积。如果`a`和`b`是多维数组，则展平成一维再点积。 |
+| `np.inner(a, b)`         | 计算矩阵的内积。对于一维数组是向量点积；对于多维数组：每个数组最后轴作为向量，由此产生的内积 |
+| `np.outer(a, b)`         | 计算矩阵的外积。它始终接收一维数组。如果是多维数组，则展平成一维数组。 |
+| `np.cross(a, b)`         | 计算两个向量之间的叉乘。叉积用于判断两个三维空间的向量是否垂直。要求`a`和`b`都是二维向量或者三维向量，否则抛出异常。 |
+|                          |                                                              |
+
+`numpy.tensordot(a, b, axes=2)`：计算张量乘积。`axes`如果是个二元序列，则第一个元素表示`a`中的轴；第二个元素表示`b`中的轴。将这两个轴上元素相乘之后求和。其他轴不变`axes`如果是个整数，则表示把`a`中的后`axes`个轴和`b`中的前`axes`个轴进行乘积之后求和。其他轴不变
+
+##### 线性代数
+
+| 函数                                | 说明                                                         |
+| ----------------------------------- | ------------------------------------------------------------ |
+| `np.linalg.inv(a)`                  | 获取`a`的逆矩阵。如果传入的是多个矩阵，则依次计算这些矩阵的逆矩阵。 |
+| `np.trace(a, offset=0)`             | 返回对角线的和。如果`a`是二维的，则选取对角线的元素之和，或者对角线右侧偏移`offset`的元素之和 |
+| `np.linalg.solve(a,b)`              | 计算线性方程的解`ax=b`，其中`a`为矩阵，要求为秩不为0的方阵，`b`为列向量 |
+| `np.linalg.eig(a)`                  | 计算矩阵的特征值和右特征向量。如果不是方阵则抛出异常，如果行列式为0则抛出异常。 |
+| `np.linalg.svd(a, full_matrices=1)` | 对矩阵`a`奇异值分解，返回`u`、`s`、`v`的元组，其中`u`和`v`是酉矩阵，`s`是`a`的奇异值组成的一维数组。 |
 

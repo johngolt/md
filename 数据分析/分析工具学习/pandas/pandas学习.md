@@ -1,6 +1,18 @@
+贝叶斯分类
+
+高斯分布：假设特征连续，且符合正态分布.
+
+多项式分布：适合离散特征。
+
+贝努利分布：适合二元特征。
+
 ### 基本数据结构
 
+Pandas的组件 sidetable，可以极大地提升我们的数据分析效率，主要是有4个方面的功能，频率统计、计数统计、缺失统计、小计功能。
 
+nstall and `import sidetable`. Then access it through the new `.stb` accessor on your DataFrame.
+
+For the Titanic data: `df.stb.freq(['class'])` will build a frequency table
 
 ### 运算
 

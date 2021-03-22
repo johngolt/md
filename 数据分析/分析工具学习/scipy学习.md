@@ -1,72 +1,41 @@
-### 常数和特殊函数
+##### 常数和特殊函数
 
-#### $\text{constants}$模块
+`constants`模块还包含了许多单位信息，它们是1单位的量转换成标准单位时的数值。
 
-`constants`模块还包含了许多单位信息，它们是1单位的量转换成标准单位时的数值：
+`special`模块是个非常完整的函数库，其中包含了基本数学函数、特殊数学函数以及`numpy`中出现的所有函数。这些特殊函数都是`ufunc`函数，支持数组的广播运算。
 
-#### $\text{special}$模块
-
-`scipy`的`special`模块是个非常完整的函数库，其中包含了基本数学函数、特殊数学函数以及`numpy`中出现的所有函数。这些特殊函数都是`ufunc`函数，支持数组的广播运算。
-
-### 拟合和优化
+##### 拟合和优化
 
 `scipy`的`optimize`模块提供了许多数值优化算法。
-
-###### 求解非线性方程组
-
-```python
- scipy.optimize.fsolve(func, x0, args=(), fprime=None, full_output=0, col_deriv=0,
-  xtol=1.49012e-08, maxfev=0, band=None, epsfcn=None, factor=100, diag=None)
-```
 
 - `func`：是个可调用对象，它代表了非线性方程组。给他传入方程组的各个参数，它返回各个方程残差
 - `x0`：预设的方程的根的初始值
 - `args`：一个元组，用于给`func`提供额外的参数。
-- `fprime`：用于计算`func`的雅可比矩阵按行排列。默认情况下，算法自动推算
-- `full_output`：如果为`True`，则给出更详细的输出
-- `col_deriv`：如果为`True`，则计算雅可比矩阵更快
-- `diag`：它给出了每个变量的缩放因子
+- `fprime/jac/Dfun`：用于计算`func`的雅可比矩阵按行排列。
+- `hess`：可调用对象，海森矩阵。
 
-返回值：`x`：方程组的根组成的数组
+| 函数                                                         | 作用             | 返回值               |
+| ------------------------------------------------------------ | ---------------- | -------------------- |
+| `optimize.fsolve(func, x0, args=(), fprime=None)`            | 求解非线性方程组 | 方程组的根组成的数组 |
+| `optimize.leastsq(func, x0, args=(), Dfun=None)`             | 最小二乘法拟合   | 拟合解组成的数组     |
+| `optimize.curve_fit(f, xdata, ydata, p0=None)`               | 最小二乘曲线拟合 | 拟合解组成的数组     |
+| `optimize.minimize(fun, x0, args=(), method=None, jac=None,hess=None)` | 求函数最小值     | `OptimizeResult`对象 |
+|                                                              |                  |                      |
 
 假设待求解的方程组为：
+
 $$
 \begin{aligned} f_{1}\left(x_{1}, x_{2}, x_{3}\right) &=0 \\ f_{2}\left(x_{1}, x_{2}, x_{3}\right) &=0 \\ f_{3}\left(x_{1}, x_{2}, x_{3}\right) &=0 \end{aligned}
 $$
-那么我们的`func`函数为
-
 ```python
 def func(x):
     x1, x2, x3=x.tolist()
     return np.array([f1(x1, x2, x3), f2(x1, x2, x3), f3(x1, x2, x3)])
-```
-
-而雅可比矩阵为：
-$$
-J=\left[\begin{array}{ccc}{\frac{\partial f_{1}}{\partial x_{1}}} & {\frac{\partial f_{1}}{\partial x_{2}}} & {\frac{\partial f_{1}}{\partial x_{3}}} \\ {\frac{\partial f_{2}}{\partial x_{1}}} & {\frac{\partial f_{2}}{\partial x_{2}}} & {\frac{\partial f_{2}}{\partial x_{3}}} \\ {\frac{\partial f_{3}}{\partial x_{1}}} & {\frac{\partial f_{3}}{\partial x_{2}}} & {\frac{\partial f_{3}}{\partial x_{3}}}\end{array}\right]
-$$
-
-```python
 def fprime(x):
     x1, x2, x3=x.tolist()
     return np.array([[df1/dx1, df1/dx2, df1/dx3], 
-                    [df2/dx1, df2/dx2, df2/dx3], [df3/dx1,df3/dx2, df3/dx3]])
+                    [df2/dx1, df2/dx2, df2/dx3], [df3/dx1,df3/dx2, df3/dx3]]) 
 ```
-
-###### 最小二乘法拟合数据
-
-```python
-  scipy.optimize.leastsq(func, x0, args=(), Dfun=None, full_output=0, col_deriv=0,
-  ftol=1.49012e-08, xtol=1.49012e-08, gtol=0.0, maxfev=0, epsfcn=None, 
-  factor=100, diag=None)
-```
-
-- `func`：是个可调用对象，给出每次拟合的残差。最开始的参数是待优化参数；后面的参数由`args`给出
-- `x0`：初始迭代值
-- `args`：一个元组，用于给`func`提供额外的参数。
-- `Dfun`：用于计算`func`的雅可比矩阵。默认情况下，算法自动推算。它给出残差的梯度。最开始的参数是待优化参数；后面的参数由`args`给出
-
-返回值：`x`：拟合解组成的数组
 
 假设我们拟合的函数是$f(x, y;a, b,c)=0$，其中$a,b,c$为参数。假设数据点的横坐标为$X$，纵坐标为$Y$，那么我们可以给出`func`为：
 
@@ -96,42 +65,9 @@ def jac(p, x, y):
     a, b, c, d = p.tolist()
     return np.c_[x**3, x**2, x, np.ones_like(x)]
 result = leastsq(func, x0=np.array([1, 1, 1, 1]), args=(x, y), Dfun=jac)
-```
-
-`scipy`提供了另一个函数来执行最小二乘法的曲线拟合：
-
-```
- scipy.optimize.curve_fit(f, xdata, ydata, p0=None, sigma=None, absolute_sigma=False, 
-    check_finite=True, bounds=(-inf, inf), method=None, **kwargs)
-```
-
-- `f`：可调用函数，它的优化参数被直接传入。其第一个参数一定是`xdata`，后面的参数是待优化参数
-- `xdata`：`x`坐标
-- `ydata`：`y`坐标
-- `p0`：初始迭代值
-- `sigma`：`y`值的不确定性的度量
-
-```python
+#scipy提供了另一个函数来执行最小二乘法的曲线拟合
 result = curve_fit(func, x, y, p0=np.array([1, 1, 1, 1]))
 ```
-
-###### 求函数最小值
-
-```python
-  scipy.optimize.minimize(fun, x0, args=(), method=None, jac=None, hess=None, 
-  hessp=None, bounds=None, constraints=(), tol=None, callback=None, options=None)
-```
-
-- `fun`：可调用对象，待优化的函数。最开始的参数是待优化的自变量；后面的参数由`args`给出
-- `x0`：自变量的初始迭代值
-- `args`：一个元组，提供给`fun`的额外的参数
-- `method`：一个字符串，指定了最优化算法。
-- `jac`：一个可调用对象，雅可比矩阵。如果`jac`是个布尔值且为`True`，则会假设`fun`会返回梯度；如果是个布尔值且为`False`，则雅可比矩阵会被自动推断。
-- `hess/hessp`：可调用对象，海森矩阵。二者只需要给出一个就可以，如果给出了`hess`，则忽略`hessp`。如果二者都未提供，则海森矩阵自动推断
-- `bounds`：一个元组的序列，给定了每个自变量的取值范围。如果某个方向不限，则指定为`None`。每个范围都是一个`(min,max)`元组。
-- `constrants`：一个字典或者字典的序列，给出了约束条件。只在`COBYLA/SLSQP`中使用。字典的键为：`type`：给出了约束类型。如`'eq'`代表相等；`'ineq'`代表不等、`fun`：给出了约束函数、`jac`：给出了约束函数的雅可比矩阵、`args`：一个序列，给出了传递给`fun`和`jac`的额外的参数
-
-返回值：返回一个`OptimizeResult`对象。其重要属性为：`x`：最优解向量、`success`：一个布尔值，表示是否优化成功、`message`：描述了迭代终止的原因
 
 假设我们要求解最小值的函数为：$f(x, y)=(1-x)^{2}+100\left(y-x^{2}\right)^{2}$
 
@@ -149,21 +85,11 @@ def hess(p):
 result = minimize(func, x0=np.aray([10, 10]), method='Newton-CG', jac=jac, hess=hess)
 ```
 
-常规的最优化算法很容易陷入局部极值点。`basinhopping`算法是一个寻找全局最优点的算法。
+常规的最优化算法很容易陷入局部极值点。`basinhopping`是寻找全局最优点的算法。
 
 ```python
-scipy.optimize.basinhopping(func, x0, niter=100, T=1.0, stepsize=0.5, 
-  minimizer_kwargs=None,take_step=None, accept_test=None, callback=None, 
-  interval=50, disp=False, niter_success=None)
+optimize.basinhopping(func, x0)
 ```
-
-- `func`：可调用函数。为待优化的目标函数。最开始的参数是待优化的自变量；后面的参数由`minimizer_kwargs`字典给出
-- `x0`：一个向量，设定迭代的初始值
-- `niter`：一个整数，指定迭代次数
-- `take_step`：一个可调用对象，给出了游走策略
-- `accept_step`：一个可调用对象，用于判断是否接受这一步
-- `callback`：一个可调用对象，每当有一个极值点找到时，被调用
-- `interval`：一个整数，指定`stepsize`被更新的频率
 
 返回值：一个`OptimizeResult`对象。其重要属性为：`x`：最优解向量
 
@@ -174,40 +100,31 @@ result = basinhopping(func, x0=np.array([10, 10]))
 
 ### 线性代数
 
-###### 求解线性方程组
-
-在`numpy`中使用`numpy.linalg.solve(a, b)`。而`scipy`中的求解线性方程组：
-
-```python
-scipy.linalg.solve(a, b, sym_pos=False, lower=False, overwrite_a=False, 
-  overwrite_b=False, debug=False, check_finite=True)
-```
-
 - `a`：方阵，形状为 `(M,M)`
-- `b`：一维向量，形状为`(M,)`。它求解的是线性方程组 。如果有  个线性方程组要求解，且 `a`，相同，则 `b`的形状为 `(M,k)`
+- `b`：一维向量，形状为`(M,)`。
 - `sym_pos`：一个布尔值，指定`a`是否正定的对称矩阵
 - `lower`：一个布尔值。如果`sym_pos=True`时：如果为`lower=True`，则使用`a`的下三角矩阵。默认使用`a`的上三角矩阵。
-- `check_finite`：如果为`True`，则检测输入中是否有`nan`或者`inf`
 
-返回线性方程组的解。
+| 函数                                             | 作用           | 返回值         |
+| ------------------------------------------------ | -------------- | -------------- |
+| `linalg.solve(a, b, sym_pos=False, lower=False)` | 求解线性方程组 | 线性方程组的解 |
+| `linalg.lu_factor(a)`                            | 矩阵`LU`分解   |                |
+| `scipy.linalg.lstsq(a, b)`                       |                |                |
+|                                                  |                |                |
+|                                                  |                |                |
 
 ###### 矩阵的`LU`分解：
 
-矩阵`LU`分解：$\mathbf{A}=\mathbf{P} \mathbf{L} \mathbf{U}$。其中：$\mathbf{P}$为转置矩阵。$\mathbf{L}$为单位下三角矩阵对角线元素为1，$\mathbf{P}$为上三角矩阵对角线元素为0
+矩阵`LU`分解：$\mathbf{A}=\mathbf{P} \mathbf{L} \mathbf{U}$。其中：$\mathbf{P}$为转置矩阵。$\mathbf{L}$为单位下三角矩阵对角线元素为1，$\mathbf{U}$为上三角矩阵对角线元素为0，$\mathbf{A}$，要求非奇异矩阵(可逆矩阵)
 
-```python
-scipy.linalg.lu_factor(a, overwrite_a=False, check_finite=True)
-```
 
-- `a`：方阵，形状为`(M,M)`，要求非奇异矩阵；
-- `overwrite_a`：一个布尔值，指定是否将结果写到`a`的存储区。
 
-返回:`lu`：一个数组，形状为`(N,N)`，该矩阵的上三角矩阵就是`U`，下三角矩阵就是`L`、`piv`：一个数组，形状为`(N,)`。它给出了`P`矩阵：矩阵`a`的第 `i`行被交换到了第`piv[i]`行
+返回:`lu`：一个数组，形状为`(N,N)`，该矩阵的上三角矩阵就是`U`，下三角矩阵就是`L`、`piv`：一个数组，形状为`(N,)`。它给出了`P`矩阵：矩阵`a`的第 `i`行被交换到了第`piv[i]`行 
 
 当对矩阵进行了`LU`分解之后，可以方便的求解线性方程组。
 
 ```python
-scipy.linalg.lu_solve(lu_and_piv, b, trans=0, overwrite_b=False, check_finite=True)
+scipy.linalg.lu_solve(lu_and_piv, b, trans=0)
 ```
 
 - `lu_and_piv`：一个元组，由`lu_factor`返回
@@ -216,14 +133,10 @@ scipy.linalg.lu_solve(lu_and_piv, b, trans=0, overwrite_b=False, check_finite=Tr
 
 `lstsq`比`solve`更一般化，它不要求矩阵$\mathbf{A}$是方阵。 它找到一组解$\mathbf{x}$，使得$\|\mathbf{b}-\mathbf{A} \mathbf{x}\|$最小，我们称得到的结果为最小二乘解。
 
-```
-scipy.linalg.lstsq(a, b, cond=None, overwrite_a=False, overwrite_b=False,check_finite=True, lapack_driver=None)
-```
+
 
 - `a`：为矩阵，形状为`(M,N)`
 - `b`：一维向量，形状为`(M,)`。它求解的是线性方程组 。如果有  个线性方程组要求解，且 `a`，相同，则 `b`的形状为 `(M,k)`
-- `cond`：一个浮点数，去掉最小的一些特征值。当特征值小于`cond * largest_singular_value`时，该特征值认为是零
-- `lapack_driver`：一个字符串，指定求解算法。可以为：`'gelsd'/'gelsy'/'gelss'`。默认的`'gelsd'`效果就很好，但是在许多问题上`'gelsy'`效果更好。
 
 ###### 求解特征值和特征向量
 

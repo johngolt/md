@@ -291,14 +291,38 @@ tar.close
 
 #### 其他
 
-###### pip
+##### `pip`
 
-  `install`: Install packages.  `download`: Download packages.  `uninstall`: $Uninstall$ packages.  `freeze`                     Output installed packages in requirements format. ` list `: List installed packages. ` show `: Show information about installed packages. ` check `: Verify installed packages have compatible dependencies.                             ` config `: Manage local and global configuration. ` search` : Search $PyPI$ for packages. ` wheel`Build wheels from your requirements. ` hash`: Compute hashes of package archives. ` completion `  A helper command used for command completion.  `help  `: Show help for commands.
+###### `pip freeze`
 
-General Options:
- ` -h, --help`: Show help.   `-V, --version  `: Show version and exit.  ` --log <path> ` : Path to a verbose appending log.  ` --proxy <proxy> ` : Specify a proxy in the form $[user:passwd@]proxy.server:port$.`--retries <retries>  ` : Maximum number of retries each connection should attempt. `--timeout <sec> `: Set the socket timeout (default 15 seconds).  `--cache-dir <dir>`: Store the cache data in <dir>`--no-cache-dir`: Disable the cache.
+批量导出当前开发环境的包信息，然后安装
 
-`pip install`
+```
+pip freeze > requirements.txt 
+pip install -r requirements.txt
+```
 
- `-r, --requirement <file> `: Install from the given requirements file. This option can be used multiple times.   `-c, --constraint <file>`: Constrain versions using the given constraints file. This option can be used multiple times.  `--no-deps`: Don't install package dependencies.   `--pre`: Include pre-release and development versions. By default, pip only finds stable versions.   `-t, --target <dir>`: Install packages into <dir>. By default this will not replace existing files/folders in<dir>. Use --upgrade to replace existing packages in <dir> with new versions.     `-U, --upgrade`: Upgrade all specified packages to the newest available version. The handling of dependencies depends on the upgrade-strategy used.   `--user ` : Install to the Python user install directory for your platform.   `--root <dir>`: Install everything relative to this alternate root directory.   `-i, --index-url <url>`: Base URL of Python Package Index This should point to
-a repository compliant with PEP 503 or a local directory laid out in the same format.
+###### `pip cache`
+
+`Win + R` ，输入`%LocalAppData%\pip\Cache`
+
+###### `pip list`
+
+列出所有安装包和版本信息，`pip list --outdate`可以列出所有可升级的包。
+
+###### `pip.init`
+
+具体做法：`Win + R` ，输入 `%APPDATA% `在当前目录下新建`pip`文件夹，然后新建`pip.ini`文件，内容如下
+
+```
+[global]
+index-url = https://mirrors.aliyun.com/pypi/simple/
+trusted-host=mirrors.aliyun.com
+```
+
+```
+豆瓣(douban) http://pypi.douban.com/simple/ 
+清华大学 https://pypi.tuna.tsinghua.edu.cn/simple/ 
+中国科技大学 https://pypi.mirrors.ustc.edu.cn/simple/ 
+```
+
