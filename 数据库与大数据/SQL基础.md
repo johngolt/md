@@ -1,198 +1,196 @@
-| 名称              | 说明                                                         |
-| ----------------- | ------------------------------------------------------------ |
-| 数据定义语言`DDL` | 是`SQL`语言集中负责数据结构定义与数据库对象定义的语言。`DDL`的核心指令是`CREATE,ALTER,DROP` |
-| 数据操作语言`DML` | 对数据库其中的对象和数据运行访问工作的编程语句。`DML`的核心指令是`INSERT,UPDATE,DELETE,SELECT`。 |
-| 数据控制语言`DCL` | 用于管理数据库中的事务。这些用于管理由`DML`语句所做的更改。`TCL`的核心指令是`COMMIT,ROLLBACK` |
-| 数据查询语言`DQL` | 是一种可对数据访问权进行控制的指令，它可以控制特定用户账户对数据表、查看表、预存程序的控制权。`DCL`的核心指令是`GRANT,REVOKE`。 |
-| 模式 `schema`     | 数据库和表的布局及特性的信息。模式定义了数据在表中如何存储，包含存储什么样的数据，数据如何分解，各部分信息如何命名等信息。 |
+- **什么是数据漂移？**
 
-`net start MySQL`启动`MySQL`服务。`net stop MySQL`停止服务。当`MySQL`服务启动完成后，便可以通过客户端登录`mySQL`数据库。`sql -h localhost -u root -p password`
 
-创建数据库: `create database db_name`、删除数据库:`drop database db_name`
+通常是指ods表的同一个业务日期数据中包含了前一天或后一天凌晨附近的数据或者丢失当天变更的数据，这种现象就叫做漂移，且在大部分公司中都会遇到的场景。
 
-`show databases`查看当前所有存在的数据库；`create database database_name`创建数据库；`drop databae database_name`删除数据库；`use database_name`使用数据库；
+**如何解决数据漂移问题？**
 
-查看数据表: `desc tb_name`. 查看表详细结构: `show create table tb_name`
+通常有两种解决方案：
 
-##### 数据操作
+1. 多获取后一天的数据，保障数据只多不少
 
-###### 新建数据表
+2. 通过多个时间戳字段来限制时间获取相对准确的数据
 
-```mysql
-create table tb_name(
-字段1， 数据类型[列级别约束条件][默认值],
-字段2， 数据类型[列级别约束条件][默认值],
-字段3， 数据类型[列级别约束条件][默认值],
-[表级别约束条件])
+第一种方案比较暴力，这里不做过多解释，主要来讲解一下第二种解决方案。（首先这种解决方案在大数据之路这本书有体现）
+
+**以下内容为该书的描述：**
+
+通常，时间戳字段分为四类：
+
+1. 数据库表中用来标识**数据记录更新时间**的时间戳字段（假设这类字段叫 modified time ）
+
+2. 数据库**日志中**用来标识**数据记录更新时间**的时间戳字段·（假设这类宇段叫 log_time）
+
+3. 数据库表中用来记录**具体业务过程发生时间**的时间戳字段 （假设这类字段叫 proc_time）
+
+4. 标识数据记录**被抽取到时间**的时间戳字段（假设这类字段extract time）
+
+理论上这几个时间应该是一致的，但往往会出现差异，造成的原因可能为：
+
+1. 数据抽取需要一定的时间，extract_time往往晚于前三个时间
+
+2. 业务系统手动改动数据并未更新modfied_time
+
+3. 网络或系统压力问题，log_time或modified_time晚于proc_time
+
+通常都是根据以上的某几个字段来切分ODS表，这就产生了数据漂移。具体场景如下：
+
+1. 根据extract_time进行同步
+
+2. 根据modified_time进行限制同步， 在实际生产中这种情况最常见，但是往往会发生不更新 modified time 而导致的数据遗漏，或者凌晨时间产生的数据记录漂移到后天 。由于网络或者系统压力问题， log_time 会晚proc_time ，从而导致凌晨时间产生的数据记录漂移到后一天。
+
+3. 根据proc_time来限制，会违背ods和业务库保持一致的原则，因为仅仅根据proc_time来限制，会遗漏很多其他过程的变化
+
+那么该书籍中提到的**第二种解决方案**：
+
+1. 首先通过log_time多同步前一天最后15分钟和后一天凌晨开始15分钟的数据，然后用modified_time过滤非当天的数据，这样确保数据不会因为系统问题被遗漏
+
+2. 然后根据log_time获取后一天15分钟的数据，基于这部分数据，按照主键根据log_time做升序排序，那么第一条数据也就是最接近当天记录变化的
+
+3. 最后将前两步的数据做全外连接，通过限制业务时间proc_time来获取想要的数据
+
+数据库在通过连接两张或多张表来返回记录时，都会生成一张中间的临时表
+
+以 LEFT JOIN 为例：在使用 LEFT JOIN 时，ON 和 WHERE 过滤条件的区别如下：
+
+**on** 条件是在生成临时表时使用的条件，它不管 **on** 中的条件是否为真，都会返回左边表中的记录
+
+**where** 条件是在临时表生成好后，再对临时表进行过滤的条件。这时已经没有 **left join** 的含义（必须返回左边表的记录）了，条件不为真的就全部过滤掉。
+
+> 缓慢变化维(Slowly Changing Dimensions) 指的是维度的属性并不是静态的，它会随着时间的流失发生缓慢的变化。比如像我们的工作经历就是属于缓慢变化的。一般针对这种变化信息处理有10种处理方式。
+> 
+> 1. 保留原值
+>    
+>    通常这种方式比较关注原始数据，比如原始的信用卡积分或者日期维度；需要对原始数据进行分析的场景下使用
+> 
+> 2. 重写覆盖
+>    
+>    即修改属性值为最新值，即只关心最新的变化，需要注意的是如果涉及到olap，可能会进行重复计算
+> 
+> 3. 增加新行
+>    
+>    通过追加新行的方式，需要注意的是和事实表的关联更新，即维度主键不能使用自然键或持久键，否则会出现数据发散。通常采用该种方式还需要增加几个附加列，如该行的有效时间和截止时间，以及当前行标示，这里可以通过拉链表来借助理解。
+> 
+> 4. 增加新属性列
+>    
+>    基于维表来增加新的属性列来保留历史属性值。一般不常用。
+> 
+> 5. 增加微型维度
+>    
+>    当维表中的部分属性出现快速变化的时候，可以使用该种方式，即将部分相对快速变化的属性从当前维表中划分出来，构建单独的微型维度表。
+> 
+> 6. 微型维度结合直接覆盖形成支架表
+>    
+>    在第5种方式的基础上再结合直接覆盖的方式。即建立微型维表后，微型维度的主键不仅作为事实表的外键，而且也是主维度的外键。当微型维度表的属性值发生变化的时候，直接进行覆盖。
+> 
+> 7. 同时增加行列，重写新加入的维度列
+>    
+>    这种方式的处理场景不常用，这里给出具体的样例配合理解。请注意截图标注的部分
+>    
+>    快照
+> 
+> 这种方式比较粗暴，即每天保留全量的快照数据，通过空间换时间
+> 
+> 9. 历史拉链
+> 
+> 拉链表的处理方式，即通过时间标示当前有效记录
+> 
+> 10. 双重外键结合直接覆盖和追加的方式
+> 
+> 基于追加新行的方式上，使用双键来区别历史/当前属性。通过代理键获取当前记录，使用自然键获取历史记录。也是通过样例配合理解
+
+Hive窗口函数怎么设置窗口大小
+
+这里主要说一下 current row ,preceding,following这几个关键词：
+
+current row:表示当前行
+
+UNBOUNDED PRECEDING：表示从组内的起点开始
+
+num PRECEDING:表示从当前行的前num行开始
+
+num FOLLOWING：表示截止到当前行的后num行
+
+UNBOUNDED FOLLOWING:表示截止到组内的最后一行
+
+这里只给出使用样例，根据调整上面的参数最后得到的结果会跟lag,lead函数是一样的
+
+```hs
+select 
+ sum(cnt) over() as all_cnt,--所有行相加
+ 
+ sum(cnt) over(partition by url) as url_cnt,--按url分组，组内数据相加
+ 
+ sum(cnt) over(partition by url order by visit_time) as url_visit_asc_cnt,--按url分组，按照visit_time升序,组内数据累加
+ 
+ sum(cnt) over(partition by url order by visit_time rows between UNBOUNDED PRECEDING and current row ) as url_cnt_1 ,--和sample3一样,由起点到当前行的聚合
+ 
+sum(cnt) over(partition by url order by visit_time rows between 1 PRECEDING and current row) as url_cnt_2, --当前行和前面一行做聚合
+
+sum(cnt) over(partition by url order by visit_time rows between 1 PRECEDING AND 1 FOLLOWING ) as url_cnt_3,--当前行和前边一行及后面一行
+
+sum(cnt) over(partition by url order by visit_time rows between current row and UNBOUNDED FOLLOWING ) as url_cnt_4 --当前行及后面所有行
+
+from wedw_dwd.log;
+
 ```
 
-| 要求     | 说明                                                         |
-| -------- | ------------------------------------------------------------ |
-| 主键约束 | 单字段：`字段名 数据类型 primary key [默认值]`或`[constraint <约束名>] primary key [字段名]`；多字段：`primary key[字段1，字段2，···，字段n]` |
-| 外键约束 | `[constraint<外键名>] foreign key 字段名1 [，字段名2，···] references<主键名> 主键列1[，主键列2，···]` |
-| 非空约束 | `字段名 数据类型 not null`                                   |
-| 唯一性   | `字段名 数据类型 unique`, `[constraint<约束名>] unique(<字段名>)` |
-| 默认约束 | `字段名 数据类型 default 默认值`                             |
-| 自动增加 | `字段名 数据类型 auto_increment`                             |
+1. **order by**
+   
+   按照指定的key进行全局分组排序，且排序是全局有序的
 
-###### 修改数据表
+2. **distributed by**
+   
+   distribute by 是控制map的输出在reducer端是如何划分的.hive会根据distribute by 后面指定的列，对应reducer的个数进行分发.默认采用hash算法.sort by 为每一个reduce产生一个排序文件.在有些情况下，你需要控制某个特定行应该到哪个reducer，这通常是为了进行后续的聚集操作。distribute by刚好可以做这件事。因此，distribute by经常和sort by配合使用.
 
-| 操作         | 说明                                                         |
-| ------------ | ------------------------------------------------------------ |
-| 修改表名     | `alter table old_name rename [to] new_name`；                |
-| 修改数据类型 | `alter table tb_name modify 字段名  数据类型`；              |
-| 修改字段名   | `alter table tb_name change old_name new_name new_data_type` |
-| 添加字段     | ` alter table tb_name add name dtype [contraint] [first|after 已存在字段]` |
-| 删除字段     | `alter table tb_name drop name`                              |
-| 修改排列位置 | ` alter table tb_name modify name data_type first|after name2` |
-| 更改存储引擎 | `alter table tb_name engine=new_engine`                      |
-| 删除外键约束 | `alter table tb_name drop foreign key key_name`              |
+3. **sort by**
+   
+   不是全局有序的，每个reduce端是有序的， 保证了局部有序 ；当只有一个reduce的时候，是可以实现全局有序的
 
-如果删除没有关联的表`drop table [if exists] tb1, tb2, ..., tbn`；删除被其他表关联的主表，需要先解除关联子表的外键约束，然后执行删除没有关联的表的操作。
+4. **cluster by**
+   
+   是distirbuted by 和sort by 的结合，但是不能指定排序为asc或desc的规则，只能升序排列
 
-外键用来在两个表的数据之间建立连接，它可以是一列或多列。一个表可以有一个或多个主键。外键对应的是参照完整性，一个表的外键可以为空值，若不为空值，则每一个外键值必须等于另一个表中主键的某个值。外键首先它是表中的一个字段，它可以不是本表的主键，但对应另一个表的主键。
+首先数据同步根据读者使用情况来说明，而如何保证数据不丢失，笔者认为需要从以下3个方面来着手(其实就是从事前、事中、事后全方面考虑)
 
-##### 数据类型介绍
+1.同步工具(事前)
 
-数值类型：包括整数类型`tinyint, smallint, mediumint, int, bigint`浮点小数数据类型`float, double`，定点小数类型`decimal`。时间/日期类型：包括`year, time, date, datetime, timestamp`。字符串类型：包括`char, varchar, binary, varbinary, blob, text, enum, set`
+目前主流的数据同步工具是sqoop、datax、canal、flume等。需要结合同步工具以及待同步的数据特性保证数据采集，例如使用sqoop来增量同步业务数据，这里需要保证业务数据中需要有更新时间，而且该更新时间是真的会进行更新(有时开发同学可能会忘记更新该时间的或者直接就是没有更新时间)。
 
-`ENUM`是一个字符串对象，其值为表创建时在列规定内阁中枚举的一列值。
+2.平台稳定性(事中)
 
-`字段名 ENUM('值1'，'值2'，···，'值n')`
+数据同步需要借助于调度系统，而且同步工具也有可能是直接集成到平台上，那么这个时候就需要保证调度和平台的稳定性。否则系统挂了还没有告警机制，那么就悲催了
 
-`SET`是一个字符串对象，可以有零或多个值，set列最多可以有64个成员，其值为表创建时规定的一列值。指定包括多个set成员的set列值时，各成员之间用逗号(,)间隔开。语法格式如下：`SET('值1'，'值2'，···，'值n')`
+3.监测机制(事后)
 
-```mysql
-create table tmp1(s set('a', 'b', 'c', 
-                       'd'));
-insert into tmp1 values('a'), ('a,b,a'), ('c,a,d')
-```
+这里涉及到数据稽核了，即下游任务配置对应的稽核规则，当数据量波动超出阈值则需要发出告警，相关负责人就需要进行检查了。
 
-##### 常见运算符介绍
+以上是笔者个人的思路，描述可能不太全面或者准确，如果读者有更好的想法请及时联系笔者进行更改
 
-`in`：判断一个值是列表中的任意一个值, `between and`：判断一个值是否落在两个值之间, `greatest`:当有两或多个参数时，返回最大值, `least`：当有两或多个参数时，返回最小值, `like`：通配符匹配, `regexp`：正则表达式匹配
+hive支持的存储格式有TEXTFILE 、SEQUENCEFILE、ORC、PARQUET
 
-逻辑运算符：`not, and, or, xor`
+| 压缩格式    | 算法      | 文件扩展名    | 是否可切分 | 对应的编码/解码器                                  |
+| ------- | ------- | -------- | ----- | ------------------------------------------ |
+| DEFLATE | DEFLATE | .deflate | 否     | org.apache.hadoop.io.compress.DefaultCodec |
+| Gzip    | DEFLATE | .gz      | 否     | org.apache.hadoop.io.compress.GzipCodec    |
+| bzip2   | bzip2   | .bz2     | 是     | org.apache.hadoop.io.compress.BZip2Codec   |
+| LZO     | LZO     | .lzo     | 是     | com.hadoop.compression.lzo.LzopCodec       |
+| Snappy  | Snappy  | .snappy  | 否     | org.apache.hadoop.io.compress.SnappyCodec  |
 
-`%`：匹配任何数目的字符，甚至包括零字符。`_`：只能匹配一个字符。
+| 压缩算法  | 原始文件大小 | 压缩文件大小 | 压缩速度     | 解压速度     |
+| ----- | ------ | ------ | -------- | -------- |
+| gzip  | 8.3GB  | 1.8GB  | 17.5MB/s | 58MB/s   |
+| bzip2 | 8.3GB  | 1.1GB  | 2.4MB/s  | 9.5MB/s  |
+| LZO   | 8.3GB  | 2.9GB  | 49.3MB/s | 74.6MB/s |
 
-`ifnull(v1,v2)`加入`v1`不为`NULL`，则返回`v1`，否则返回`v2`
-
-`case expr when v1 then r1 [when v2 then r2] [else m] end`
-
-带in关键字的查询、带`between and`的范围查询、带`like`的字符串匹配查询、查询空值、带`and`的多条件查询；聚合函数：`AVG, count, max, min, sum`
-
-
-
-###### 子查询
-
-```mysql
-/*带exists关键字的子查询*/
-select * from fruits where price> 10.20 and exists (select name from suppliers where id =107);
-```
-
-| 操作     | 说明                                                         |
-| -------- | ------------------------------------------------------------ |
-| 插入数据 | `insert into tb_name (column_list) values (value_list1), (value_list2),...` |
-| 更新数据 | `update tb set column_name1=value, column_name2=value2,...where (condition)` |
-| 删除数据 | `delete from table (where <condition>)`                      |
-
-将查询结果插入到表中：`insert into tb (column_list) select (column_list2) from tb2 where condition;`
+| 参数                                               | 默认值                                                                                                                                                                       | 阶段        |
+| ------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------- |
+| io.compression.codecs （在core-site.xml中配置）        | org.apache.hadoop.io.compress.DefaultCodec, <br>org.apache.hadoop.io.compress.GzipCodec, org.apache.hadoop.io.compress.BZip2Codec, org.apache.hadoop.io.compress.Lz4Codec | 输入压缩      |
+| mapreduce.map.output.compress                    | false                                                                                                                                                                     | mapper输出  |
+| mapreduce.map.output.compress.codec              | org.apache.hadoop.io.compress.DefaultCodec                                                                                                                                | mapper输出  |
+| mapreduce.output.fileoutputformat.compress       | false                                                                                                                                                                     | reducer输出 |
+| mapreduce.output.fileoutputformat.compress.codec | org.apache.hadoop.io.compress. DefaultCodec                                                                                                                               | reducer输出 |
+| mapreduce.output.fileoutputformat.compress.type  | RECORD                                                                                                                                                                    | reducer输出 |
 
 
-
-索引是对数据库表中一列或多列的值进行排序的一种结构，使用索引可提高数据库中特定数据的查询速度。索引是一个单独的、存储在磁盘上的数据库结构，它包含着对数据表里所有记录的引用指针。好处：通过创建唯一索引，可以保证数据库表中每一行数据的唯一性；可以大大加快数据的查询速度，可以加速表和表之间的连接。坏处：创建和维护索引要消耗时间，索引需要占磁盘空间。
-
-普通索引：基本索引类型，允许在定义索引的列中插入重复值和空值。
-
-唯一索引：索引列的值必须唯一，但允许有空值。如果是组合索引，则列值的组合必须唯一。主键索引是一种特殊的唯一索引，不允许有空值。
-
-##### 数据查询
-
-内连接使用比较运算符进行表间某列数据的比较操作，并列出这些表中与连接条件相匹配的数据行，组合成新纪录，也就是说，在内连接查询中，只有满足条件的记录才能出现在结果关系中。
-
-左连接：返回包括左表中的所有记录和右表中连接字段相等的记录；右连接：返回包括右表中的所有记录和坐标中连接字段相等的记录。
-
-关系模型由数据结构、关系操作、完整性约束三部分组成。关系模型中的数据结构就是关系表，包括基础表、派生表（查询结果）和虚拟表（视图）。常用的关系操作包括增加、删除、修改和查询，使用的就是`SQL`语言。其中查询操作最为复杂，包括选择、投影、并集、交集、差集以及笛卡儿积等。完整性约束用于维护数据的完整性或者满足业务约束的需求，包括实体完整性（主键约束）、参照完整性（外键约束）以及用户定义的完整性（非空约束、唯一约束、检查约束和默认值）。
-
-SELECT 子句用于指定需要查询的字段，可以包含表达式、函数值等。SELECT 在关系操作中被称为投影
-
-![](../picture/1/377.png)
-
-WHERE 用于指定数据过滤的条件，在关系运算中被称为选择
-
-![](../picture/1/378.png)
-
-ORDER BY 用于对查询的结果进行排序
-
-![](../picture/1/379.png)
-
-GROUP BY 改变了集合元素（数据行）的结构，创建了一个全新的关系。
-
-![](../picture/1/380.png)
-
-`SQL`面向集合特性最明显的体现就是 UNION（并集运算）、INTERSECT（交集运算）和 EXCEPT/MINUS（差集运算）。
-
-这些集合运算符的作用都是将两个集合并成一个集合，因此需要满足以下条件：
-
-- 两边的集合中字段的数量和顺序必须相同；
-- 两边的集合中对应字段的类型必须匹配或兼容。
-
-UNION 和 UNION ALL 用于计算两个集合的并集，返回出现在第一个查询结果或者第二个查询结果中的数据。它们的区别在于 UNION 排除了结果中的重复数据，UNION ALL 保留了重复数据。
-
-![](../picture/1/381.png)
-
-INTERSECT 操作符用于返回两个集合中的共同部分，即同时出现在第一个查询结果和第二个查询结果中的数据，并且排除了结果中的重复数据。
-
-![](../picture/1/382.png)
-
-EXCEPT 或者 MINUS 操作符用于返回两个集合的差集，即出现在第一个查询结果中，但不在第二个查询结果中的记录，并且排除了结果中的重复数据。
-
-![](../picture/1/383.png)
-
-内连接返回两个表中满足连接条件的数据。
-
-![](../picture/1/384.png)
-
-左外连接返回左表中所有的数据；对于右表，返回满足连接条件的数据；如果没有就返回空值。
-
-![](../picture/1/385.png)
-
-全外连接等价于左外连接加上右外连接，同时返回左表和右表中所有的数据；对于两个表中不满足连接条件的数据返回空值。
-
-![](../picture/1/386.png)
-
-交叉连接也称为笛卡尔积。两个表的交叉连接相当于一个表的所有行和另一个表的所有行两两组合，结果的数量为两个表的行数相乘。
-
-![](../picture/1/387.png)
-
-执行顺序：获取数据、过滤数据、分组、分组过滤、返回查询字段 、排序与分页；当我们在执行SELECT语句时，每个步骤都会产生一张虚拟表，在执行下一步骤时，会将该虚拟表作为输入。
-
-```sql
--- SQL 语法顺序
-SELECT 
-DISTINCT <select_list>
-FROM <left_table>
-<join_type> JOIN <right_table>
-ON <join_condition>
-WHERE <where_condition>
-GROUP BY <group_by_list>
-HAVING <having_condition>
-ORDER BY <order_by_condition>
-LIMIT <limit_number>
-```
-
-```sql
-FROM <表名> # 选取表，将多个表数据通过笛卡尔积变成一个表。
-ON   <筛选条件> # 对笛卡尔积的虚表进行筛选
-JOIN <join, left join, right join...> 
-<join表> # 指定join，用于添加数据到on之后的虚表中，例如left join会将左表的剩余数据添加到虚表中
-WHERE  <where条件> # 对上述虚表进行筛选
-GROUP BY  <分组条件> # 分组 
-HAVING  <分组筛选> # 对分组后的结果进行聚合筛选，等聚合函数用于having子句进行判断
-SELECT <返回数据列表> # 返回的单列必须在group by子句中，聚合函数除外
-DISTINCT   # 数据除重
-ORDER BY  <排序条件> # 排序
-LIMIT  <行数限制>
-```
 
